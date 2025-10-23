@@ -89,9 +89,10 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
       setRefreshKey(prev => prev + 1);
       onEntryAdded();
     } catch (error: any) {
+      console.error("Daily work log error:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: "No se pudo registrar la entrada. Por favor, intenta nuevamente.",
         variant: "destructive",
       });
     } finally {
