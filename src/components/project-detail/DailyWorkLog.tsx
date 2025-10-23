@@ -32,7 +32,7 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [formData, setFormData] = useState({
-    taskId: "",
+    taskId: "none",
     hours: "",
     notes: "",
   });
@@ -72,7 +72,7 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
 
       const { error } = await supabase.from("daily_entries").insert({
         project_id: projectId,
-        task_id: formData.taskId || null,
+        task_id: formData.taskId === "none" ? null : formData.taskId || null,
         author_uid: user.id,
         date_iso: selectedDate,
         hours: validateNumber(formData.hours, 0.1, 24),
@@ -86,7 +86,7 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
         description: "La entrada se ha registrado correctamente",
       });
 
-      setFormData({ taskId: "", hours: "", notes: "" });
+      setFormData({ taskId: "none", hours: "", notes: "" });
       setRefreshKey(prev => prev + 1);
       onEntryAdded();
     } catch (error: any) {
@@ -130,7 +130,7 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
                   <SelectValue placeholder="Selecciona una tarea..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin asignar</SelectItem>
+                  <SelectItem value="none">Sin asignar</SelectItem>
                   {tasks.map((task) => (
                     <SelectItem key={task.id} value={task.id}>
                       {task.name}
