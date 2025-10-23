@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { sanitizeText, validateNumber } from "@/lib/validation";
 
 interface CreateProjectDialogProps {
   open: boolean;
@@ -31,11 +32,16 @@ const CreateProjectDialog = ({ open, onOpenChange, onProjectCreated }: CreatePro
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user found");
 
+      const validatedName = sanitizeText(formData.name, 100);
+      if (validatedName.length === 0) {
+        throw new Error("El nombre del proyecto es requerido");
+      }
+      
       const { error } = await supabase.from("projects").insert({
-        name: formData.name,
-        sow: formData.sow || null,
+        name: validatedName,
+        sow: formData.sow ? sanitizeText(formData.sow, 2000) : null,
         due_date: formData.dueDate || null,
-        hourly_rate: parseFloat(formData.hourlyRate),
+        hourly_rate: validateNumber(formData.hourlyRate, 0, 10000),
         owner_uid: user.id,
       });
 

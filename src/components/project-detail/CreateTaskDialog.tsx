@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { sanitizeText, validateNumber } from "@/lib/validation";
 
 interface CreateTaskDialogProps {
   open: boolean;
@@ -29,12 +30,17 @@ const CreateTaskDialog = ({ open, onOpenChange, projectId, onTaskCreated }: Crea
     setLoading(true);
 
     try {
+      const validatedName = sanitizeText(formData.name, 200);
+      if (validatedName.length === 0) {
+        throw new Error("El nombre de la tarea es requerido");
+      }
+      
       const { error } = await supabase.from("tasks").insert({
         project_id: projectId,
-        name: formData.name,
-        description: formData.description || null,
-        estimated_hours_min: formData.estimatedMin ? parseFloat(formData.estimatedMin) : null,
-        estimated_hours_max: parseFloat(formData.estimatedMax),
+        name: validatedName,
+        description: formData.description ? sanitizeText(formData.description, 1000) : null,
+        estimated_hours_min: formData.estimatedMin ? validateNumber(formData.estimatedMin, 0.1, 10000) : null,
+        estimated_hours_max: validateNumber(formData.estimatedMax, 0.1, 10000),
       });
 
       if (error) throw error;

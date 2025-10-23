@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import DailyEntriesList from "./DailyEntriesList";
+import { sanitizeText, validateNumber } from "@/lib/validation";
 
 interface DailyWorkLogProps {
   projectId: string;
@@ -74,8 +75,8 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
         task_id: formData.taskId || null,
         author_uid: user.id,
         date_iso: selectedDate,
-        hours: parseFloat(formData.hours),
-        notes: formData.notes,
+        hours: validateNumber(formData.hours, 0.1, 24),
+        notes: sanitizeText(formData.notes, 2000),
       });
 
       if (error) throw error;

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart3 } from "lucide-react";
+import { validateEmail, sanitizeText, validateRequired } from "@/lib/validation";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -38,9 +39,12 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      const validatedEmail = validateEmail(email);
+      const validatedPassword = validateRequired(password, "Contraseña");
+      
       const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: validatedEmail,
+        password: validatedPassword,
       });
 
       if (error) throw error;
@@ -66,15 +70,21 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      const validatedEmail = validateEmail(email);
+      const validatedPassword = validateRequired(password, "Contraseña");
+      const validatedFullName = sanitizeText(fullName, 100);
+      
+      if (validatedPassword.length < 6) {
+        throw new Error("La contraseña debe tener al menos 6 caracteres");
+      }
       
       const { error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: validatedEmail,
+        password: validatedPassword,
         options: {
-          emailRedirectTo: redirectUrl,
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
-            full_name: fullName,
+            full_name: validatedFullName,
           },
         },
       });
