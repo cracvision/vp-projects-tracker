@@ -24,31 +24,39 @@ const ProjectDetail = () => {
   const { toast } = useToast();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (projectId) {
       fetchProject();
+    } else {
+      setError("ID del proyecto no válido.");
+      setLoading(false);
     }
   }, [projectId]);
 
   const fetchProject = async () => {
     try {
+      setLoading(true);
+      setError(null);
+
       const { data, error } = await supabase
         .from("projects")
         .select("*")
         .eq("id", projectId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        setError("Proyecto no encontrado o eliminado.");
+        return;
+      }
+
       setProject(data);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "No se pudo cargar el proyecto",
-        variant: "destructive",
-      });
-      navigate("/");
+    } catch (err: any) {
+      console.error("Error al cargar el proyecto:", err);
+      setError("No se pudo cargar el proyecto. Verifica tu conexión.");
     } finally {
       setLoading(false);
     }
@@ -62,13 +70,32 @@ const ProjectDetail = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
-        <p className="text-muted-foreground">Cargando proyecto...</p>
+        <p className="text-muted-foreground animate-pulse">
+          Cargando proyecto...
+        </p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle flex flex-col items-center justify-center text-center px-4">
+        <h2 className="text-xl font-semibold mb-2">Error</h2>
+        <p className="text-muted-foreground mb-4">{error}</p>
+        <Button onClick={() => navigate("/")}>Volver al inicio</Button>
       </div>
     );
   }
 
   if (!project) {
-    return null;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-center">
+        <p className="text-muted-foreground mb-4">
+          No se encontró información del proyecto.
+        </p>
+        <Button onClick={() => navigate("/")}>Volver</Button>
+      </div>
+    );
   }
 
   return (
@@ -88,7 +115,9 @@ const ProjectDetail = () => {
                 <BarChart3 className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-bold">{project.name}</h1>
+                <h1 className="text-xl font-bold">
+                  {project?.name || "Proyecto sin nombre"}
+                </h1>
                 <p className="text-sm text-muted-foreground">
                   Dashboard del proyecto
                 </p>
@@ -99,13 +128,17 @@ const ProjectDetail = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-8">
-        <ProjectSummary project={project} refreshKey={refreshKey} />
-        
-        <TaskSection projectId={project.id} onTaskUpdate={handleRefresh} />
-        
-        <DailyWorkLog projectId={project.id} onEntryAdded={handleRefresh} />
-        
-        <ReportsSection project={project} />
+        {project && (
+          <>
+            <ProjectSummary project={project} refreshKey={refreshKey} />
+            <TaskSection projectId={project.id} onTaskUpdate={handleRefresh} />
+            <DailyWorkLog
+              projectId={project.id}
+              onEntryAdded={handleRefresh}
+            />
+            <ReportsSection project={project} />
+          </>
+        )}
       </main>
     </div>
   );
