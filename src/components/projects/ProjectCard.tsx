@@ -4,10 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Calendar, Clock, DollarSign, TrendingUp } from "lucide-react";
+import { Calendar, Clock, DollarSign, TrendingUp, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ProjectCardProps {
   project: {
@@ -66,10 +70,46 @@ const ProjectCard = ({ project, onProjectUpdated }: ProjectCardProps) => {
           <CardTitle className="text-xl group-hover:text-primary transition-colors">
             {project.name}
           </CardTitle>
-          <Badge variant="secondary">
-            <TrendingUp className="h-3 w-3 mr-1" />
-            {metrics.progress}%
-          </Badge>
+
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">
+              <TrendingUp className="h-3 w-3 mr-1" />
+              {metrics.progress}%
+            </Badge>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => e.stopPropagation()}
+                  title="Eliminar proyecto"
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Eliminar este proyecto?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción eliminará el proyecto y todas sus tareas y entradas.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={async () => {
+                      const { error } = await supabase.from("projects").delete().eq("id", project.id);
+                      if (!error) onProjectUpdated();
+                    }}
+                  >
+                    Eliminar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
         <Progress value={metrics.progress} className="h-2" />
       </CardHeader>
@@ -85,7 +125,7 @@ const ProjectCard = ({ project, onProjectUpdated }: ProjectCardProps) => {
           <div className="flex items-center gap-2 text-sm">
             <DollarSign className="h-4 w-4 text-primary" />
             <div>
-              <p className="text-muted-foreground text-xs">Presupuesto</p>
+              <p className="text-muted-foreground text-xs">Costo del trabajo realizado</p>
               <p className="font-semibold">${metrics.budgetUsed.toFixed(0)}</p>
             </div>
           </div>

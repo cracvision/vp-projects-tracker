@@ -163,6 +163,41 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
                 placeholder="Describe lo que hiciste hoy..."
                 rows={4}
               />
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const input = formData.notes.trim();
+                    if (!input) return;
+                    try {
+                      // @ts-ignore — algunos entornos exponen lovable.ai
+                      const ai = (window as any)?.lovable?.ai;
+                      if (ai?.generate) {
+                        const res = await ai.generate({
+                          prompt: `Mejora y estructura estas notas de avance en viñetas claras y concisas:\n\n${input}`,
+                        });
+                        const improved = res?.text || input;
+                        setFormData((s) => ({ ...s, notes: improved }));
+                      } else {
+                        // fallback simple: viñetas básicas
+                        const bullets = input
+                          .split(/\n+/)
+                          .map(l => l.trim())
+                          .filter(Boolean)
+                          .map(l => `• ${l}`)
+                          .join("\n");
+                        setFormData((s) => ({ ...s, notes: bullets }));
+                      }
+                    } catch {
+                      // en caso de error, no rompas el flujo
+                    }
+                  }}
+                >
+                  Mejorar con AI
+                </Button>
+              </div>
             </div>
 
             <Button type="submit" disabled={loading} className="w-full">
