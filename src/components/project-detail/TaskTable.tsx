@@ -80,10 +80,9 @@ const TaskTable = ({ tasks, onTaskDeleted }: TaskTableProps) => {
         <TableHeader>
           <TableRow>
             <TableHead>Tarea</TableHead>
-            <TableHead>Estimado</TableHead>
-            <TableHead>Horas Reales</TableHead>
-            <TableHead>Progreso</TableHead>
-            <TableHead className="w-[50px]"></TableHead>
+            <TableHead className="text-right">Estimado</TableHead>
+            <TableHead className="text-right">Horas Reales</TableHead>
+            <TableHead className="text-right">Progreso</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -98,9 +97,9 @@ const TaskTable = ({ tasks, onTaskDeleted }: TaskTableProps) => {
                   title={isOpen ? "Colapsar" : "Expandir"}
                 >
                   <TableCell className="py-3">
-                    <div className="flex items-center gap-2 font-semibold">
-                      {task.name}
-                      {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    <div className="flex items-center gap-2">
+                      {isOpen ? <ChevronDown className="h-4 w-4 transition-transform rotate-180" /> : <ChevronDown className="h-4 w-4 transition-transform" />}
+                      <span className="font-medium">{task.name}</span>
                     </div>
                   </TableCell>
                   <TableCell className="py-3 text-right">
@@ -109,51 +108,54 @@ const TaskTable = ({ tasks, onTaskDeleted }: TaskTableProps) => {
                       : `${task.estimated_hours_max}h`}
                   </TableCell>
                   <TableCell className="py-3 text-right">{task.actual_hours.toFixed(1)}h</TableCell>
-                  <TableCell className="py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <span className="text-sm text-muted-foreground">{task.progress ?? 0}%</span>
+                  <TableCell className="py-3 text-right">
+                    <div className="flex items-center gap-2 justify-end">
+                      <span>{task.progress ?? 0}%</span>
+                      <Progress value={task.progress ?? 0} className="w-24 h-2" />
                     </div>
-                  </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>¿Eliminar tarea?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta acción no se puede deshacer. Se eliminará la tarea "{task.name}"
-                            y todas sus entradas diarias asociadas.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(task.id, task.name)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Eliminar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
                   </TableCell>
                 </TableRow>
 
-                {/* Fila de detalles (solo descripción) */}
+                {/* Fila de detalles */}
                 {isOpen && (
                   <TableRow>
-                    <TableCell colSpan={5} className="pb-4 pt-0">
-                      {task.description ? (
-                        <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
-                          {task.description}
+                    <TableCell colSpan={4} className="pb-4 pt-0">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex-1">
+                          {task.description ? (
+                            <div className="text-sm text-muted-foreground whitespace-pre-wrap border rounded-lg p-3">
+                              {task.description}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground italic">Sin descripción</div>
+                          )}
                         </div>
-                      ) : (
-                        <div className="mt-2 text-sm text-muted-foreground italic">Sin descripción</div>
-                      )}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="shrink-0">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Eliminar tarea?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Se eliminará la tarea "{task.name}"
+                                y todas sus entradas diarias asociadas.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDelete(task.id, task.name)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}

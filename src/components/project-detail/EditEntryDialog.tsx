@@ -28,7 +28,7 @@ export default function EditEntryDialog({
   const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [form, setForm] = useState({
-    taskId: initial.taskId ?? "none",
+    taskId: initial.taskId || "none",
     hours: String(initial.hours ?? ""),
     notes: initial.notes ?? "",
   });
@@ -44,7 +44,7 @@ export default function EditEntryDialog({
 
   useEffect(() => {
     setForm({
-      taskId: initial.taskId ?? "none",
+      taskId: initial.taskId || "none",
       hours: String(initial.hours ?? ""),
       notes: initial.notes ?? "",
     });
@@ -55,7 +55,7 @@ export default function EditEntryDialog({
     setSaving(true);
     try {
       const payload = {
-        task_id: form.taskId === "none" ? null : form.taskId,
+        task_id: !form.taskId || form.taskId === "none" ? null : form.taskId,
         hours: validateNumber(form.hours, 0.1, 24),
         notes: sanitizeText(form.notes, 2000),
       };
@@ -89,7 +89,7 @@ export default function EditEntryDialog({
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Tarea</Label>
-            <Select value={form.taskId} onValueChange={(v) => setForm((s) => ({ ...s, taskId: v }))}>
+            <Select value={form.taskId || "none"} onValueChange={(v) => setForm((s) => ({ ...s, taskId: v || "none" }))}>
               <SelectTrigger><SelectValue placeholder="Selecciona una tarea..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Sin asignar</SelectItem>

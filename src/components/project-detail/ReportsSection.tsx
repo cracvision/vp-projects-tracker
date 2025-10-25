@@ -40,7 +40,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
     try {
       const { data: entries, error } = await supabase
         .from("daily_entries")
-        .select("id, date_iso, hours, notes, tasks(name)")
+        .select("id, date_iso, hours, notes, created_at, tasks(name)")
         .eq("project_id", project.id)
         .eq("date_iso", date)
         .order("created_at", { ascending: true });
@@ -48,34 +48,54 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
 
       const total = (entries || []).reduce((s, e) => s + (e.hours || 0), 0);
 
-      // Prepara contexto compacto para el prompt
+      // Prepara contexto con hora exacta
       const ctx = (entries || []).map(e => ({
         task: e.tasks?.name || "Sin asignar",
         hours: e.hours,
+        time: format(new Date(e.created_at), "HH:mm"),
         notes: e.notes || ""
       }));
 
       const prompt = `
-Eres un analista de proyectos. Con el siguiente contexto, genera un REPORTE DIARIO en HTML claro y profesional.
-- Mantén el idioma en español.
-- Incluye secciones: "Resumen del día", "Actividades por tarea", "Riesgos/Impedimentos" (si existen), "Próximos pasos".
-- Menciona el total de horas del día y distribuciones por tarea.
-- Si una nota está vacía, indica "Sin notas".
-- Entrega SOLO HTML válido (sin <html> ni <body>), con subtítulos (<h2>) y listas (<ul>).
+Eres un asistente que redacta resúmenes ejecutivos claros, profesionales y concisos en español.
+Genera un "Reporte Diario" de trabajo para el proyecto "${project.name}" del día ${format(new Date(date), "EEEE, d 'de' MMMM yyyy", { locale: es })}.
+Usa un tono formal, corrige typos y organiza en secciones:
 
-Proyecto: ${project.name}
-Fecha: ${format(new Date(date), "EEEE, d 'de' MMMM yyyy", { locale: es })}
-Total horas del día: ${total.toFixed(1)}h
+1) Resumen ejecutivo (3–5 viñetas).
+2) Detalle por tarea (viñetas sintetizadas, 1–4 por tarea, usando solo la información dada).
 
-Entradas (JSON):
+Entrega SOLO HTML válido (sin <html> ni <body>), con subtítulos (<h2>) y listas (<ul>).
+
+Datos (JSON):
 ${JSON.stringify(ctx, null, 2)}
       `.trim();
 
       const aiHtml = await generateWithAI(prompt);
-      const html = wrapPdfHtml(`Reporte Diario — ${project.name} — ${format(new Date(date), "PPP", { locale: es })}`, aiHtml || `
-        <p><strong>Total horas:</strong> ${total.toFixed(1)}h</p>
-        <ul>${ctx.map(c => `<li><strong>${c.task}</strong> — ${c.hours}h<br/>${c.notes ? DOMPurify.sanitize(c.notes) : "<em>Sin notas</em>"}</li>`).join("")}</ul>
-      `);
+      
+      const dayLabel = format(new Date(date), "EEEE, d 'de' MMMM yyyy", { locale: es });
+      const entriesHtml = (entries || []).map((e: any) => `
+        <div style="margin:12px 0; padding:12px; border:1px solid #eee; border-radius:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <strong>${e.tasks?.name || "Sin asignar"}</strong>
+              <span style="color:#888; margin-left:8px;">${format(new Date(e.created_at), "HH:mm")}</span>
+            </div>
+            <div>${e.hours}h</div>
+          </div>
+          ${e.notes ? `<pre style="white-space:pre-wrap; margin-top:8px; font-family:inherit;">${DOMPurify.sanitize(e.notes)}</pre>` : `<em style="color:#888;">Sin notas</em>`}
+        </div>
+      `).join("");
+
+      const bodyHtml = `
+        <div style="color:#666; margin-bottom:12px;">${dayLabel}</div>
+        <div style="margin:8px 0 16px 0;"><strong>Total horas:</strong> ${total.toFixed(1)}h</div>
+        ${aiHtml || ""}
+        <hr style="margin:20px 0;"/>
+        <h2 style="margin:16px 0 8px 0;">Entradas del día</h2>
+        <div>${entriesHtml}</div>
+      `;
+
+      const html = wrapPdfHtml(`Reporte Diario — ${project.name}`, bodyHtml);
 
       await html2pdf().set({
         margin: 10,
@@ -93,53 +113,60 @@ ${JSON.stringify(ctx, null, 2)}
 
   async function generateStatus() {
     try {
-      const { data: tasks, error } = await supabase
+      const { data: tasks, error: tErr } = await supabase
         .from("tasks")
-        .select("name, description, estimated_hours_min, estimated_hours_max, actual_hours, progress")
+        .select("id, name, description, estimated_hours_max, actual_hours, progress")
         .eq("project_id", project.id)
         .order("display_order");
-      if (error) throw error;
+      if (tErr) throw tErr;
+
+      // últimos 14 días para contexto
+      const since = new Date(); 
+      since.setDate(since.getDate() - 14);
+      const { data: entries, error: eErr } = await supabase
+        .from("daily_entries")
+        .select("hours, notes, created_at, tasks(name)")
+        .eq("project_id", project.id)
+        .gte("created_at", since.toISOString())
+        .order("created_at", { ascending: true });
+      if (eErr) throw eErr;
 
       const totals = (tasks || []).reduce((acc: any, t: any) => {
         acc.actual += t.actual_hours || 0;
         acc.estMax += t.estimated_hours_max || 0;
         return acc;
       }, { actual: 0, estMax: 0 });
-
+      
       const overall = totals.estMax > 0 ? Math.min(100, Math.round((totals.actual / totals.estMax) * 100)) : 0;
 
-      const ctx = (tasks || []).map(t => ({
-        name: t.name,
-        description: t.description || "",
-        estMin: t.estimated_hours_min,
-        estMax: t.estimated_hours_max,
-        actual: t.actual_hours || 0,
-        progress: t.progress || 0
-      }));
-
       const prompt = `
-Eres un project manager. Genera un REPORTE DE ESTADO en HTML (sin <html>/<body>) para ejecutivos.
-- Idioma: español, tono profesional.
-- Incluye: "Resumen ejecutivo", "Métricas generales", "Progreso por tarea" (puedes usar una lista o tabla simple), "Riesgos y mitigaciones", "Próximos pasos".
-- Usa números redondeados y porcentajes claros.
-- NO inventes datos. Usa solo el contexto provisto.
-
-Proyecto: ${project.name}
-Fecha: ${format(new Date(), "PPPp", { locale: es })}
-Métricas:
-- Horas reales: ${totals.actual.toFixed(1)}h
-- Estimado total (max): ${totals.estMax.toFixed(1)}h
-- Progreso general: ${overall}%
+Eres un PMO. Redacta un "Reporte de Estado" profesional y conciso en español para el proyecto "${project.name}".
+Incluye: Resumen ejecutivo, Logros recientes, Riesgos/Bloqueos (si se infieren), y Próximos pasos.
+Usa bullets claras y corrige typos. Máx ~250 palabras.
+Entrega SOLO HTML válido (sin <html> ni <body>), con subtítulos (<h2>) y listas (<ul>).
 
 Tareas (JSON):
-${JSON.stringify(ctx, null, 2)}
+${JSON.stringify((tasks || []).map(t => ({
+  name: t.name,
+  description: t.description || "",
+  estimated_max: t.estimated_hours_max,
+  actual_hours: t.actual_hours,
+  progress: t.progress
+})), null, 2)}
+
+Entradas últimas 2 semanas (JSON):
+${JSON.stringify((entries || []).map(e => ({
+  task: e.tasks?.name || "Sin asignar",
+  hours: e.hours,
+  time: format(new Date(e.created_at), "yyyy-MM-dd HH:mm"),
+  notes: e.notes || ""
+})), null, 2)}
       `.trim();
 
       const aiHtml = await generateWithAI(prompt);
 
-      // tabla determinística como backup
-      const fallbackTable = `
-        <h2>Detalle por tarea</h2>
+      const taskTable = `
+        <h2 style="margin:16px 0 8px 0;">Detalle por tarea</h2>
         <table style="width:100%; border-collapse:collapse; font-size:14px;">
           <thead>
             <tr>
@@ -162,11 +189,19 @@ ${JSON.stringify(ctx, null, 2)}
         </table>
       `;
 
-      const html = wrapPdfHtml(`Reporte de Estado — ${project.name}`, aiHtml || `
-        <h2>Resumen ejecutivo</h2>
-        <p>Horas reales: ${totals.actual.toFixed(1)}h. Estimado (max): ${totals.estMax.toFixed(1)}h. Progreso general: ${overall}%.</p>
-        ${fallbackTable}
-      `);
+      const bodyHtml = `
+        <div style="color:#666; margin-bottom:16px;">Generado: ${format(new Date(), "PPPp", { locale: es })}</div>
+        <div style="margin-bottom:16px;">
+          <div><strong>Progreso general:</strong> ${overall}%</div>
+          <div><strong>Horas reales:</strong> ${totals.actual.toFixed(1)}h</div>
+          <div><strong>Estimado total (max):</strong> ${totals.estMax.toFixed(1)}h</div>
+        </div>
+        ${aiHtml || ""}
+        <hr style="margin:20px 0;"/>
+        ${taskTable}
+      `;
+
+      const html = wrapPdfHtml(`Reporte de Estado — ${project.name}`, bodyHtml);
 
       await html2pdf().set({
         margin: 10,
