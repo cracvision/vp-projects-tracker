@@ -176,20 +176,32 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
                     if (!input) return;
                     setImproving(true);
                     try {
-                      const prompt = `
-Eres un redactor técnico. Reescribe las siguientes notas de trabajo en un tono profesional, claro y conciso.
-- Mantén el idioma original del texto (si está en español, responde en español).
-- Corrige ortografía/gramática y evita jerga innecesaria.
-- Estructura en formato fácil de leer por humanos: usa subtítulos breves y viñetas cuando aplique.
-- No inventes información; no agregues datos no presentes.
-- Devuelve SOLO el contenido final en Markdown, sin prefacios.
+                      const { data, error } = await supabase.functions.invoke('improve-notes', {
+                        body: { notes: input }
+                      });
 
-Notas:
-${input}
-                      `.trim();
+                      if (error) throw error;
 
-                      const out = await generateWithAI(prompt);
-                      setFormData((s) => ({ ...s, notes: out || s.notes }));
+                      if (data?.improvedNotes) {
+                        setFormData((s) => ({ ...s, notes: data.improvedNotes }));
+                        toast({
+                          title: "Nota mejorada",
+                          description: "La IA ha mejorado tu nota",
+                        });
+                      } else {
+                        toast({
+                          title: "Error",
+                          description: "No se pudo mejorar la nota con IA",
+                          variant: "destructive",
+                        });
+                      }
+                    } catch (error) {
+                      console.error("Error al mejorar con IA:", error);
+                      toast({
+                        title: "Error",
+                        description: error instanceof Error ? error.message : "Ocurrió un error al mejorar la nota",
+                        variant: "destructive",
+                      });
                     } finally {
                       setImproving(false);
                     }
