@@ -6,14 +6,30 @@ import { FileText, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import html2pdf from "html2pdf.js";
+import DOMPurify from "dompurify";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { generateWithAI } from "@/lib/ai";
+import { BRAND_LOGO_URL } from "@/lib/brand";
 
 interface ReportsSectionProps {
   project: {
     id: string;
     name: string;
   };
+}
+
+function wrapPdfHtml(title: string, bodyHtml: string) {
+  const safeBody = DOMPurify.sanitize(bodyHtml, { USE_PROFILES: { html: true } });
+  return `
+    <div style="font-family: Inter, system-ui, -apple-system, Segoe UI; padding:24px; max-width:900px; color:#111;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+        <img src="${BRAND_LOGO_URL}" alt="logo" style="height:36px; width:auto;" />
+        <h1 style="margin:0; font-size:22px;">${title}</h1>
+      </div>
+      ${safeBody}
+    </div>
+  `;
 }
 
 const ReportsSection = ({ project }: ReportsSectionProps) => {
@@ -24,7 +40,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
     try {
       const { data: entries, error } = await supabase
         .from("daily_entries")
-        .select("*, tasks(name)")
+        .select("id, date_iso, hours, notes, tasks(name)")
         .eq("project_id", project.id)
         .eq("date_iso", date)
         .order("created_at", { ascending: true });
@@ -32,32 +48,45 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
 
       const total = (entries || []).reduce((s, e) => s + (e.hours || 0), 0);
 
-      const html = `
-        <div style="font-family: Inter, system-ui, -apple-system, Segoe UI; padding:24px; max-width:800px">
-          <h1 style="margin:0 0 4px 0;">Reporte Diario — ${project.name}</h1>
-          <div style="color:#666; margin-bottom:16px;">${format(new Date(date), "EEEE, d 'de' MMMM yyyy", { locale: es })}</div>
-          <div style="margin:8px 0 16px 0;"><strong>Total horas:</strong> ${total.toFixed(1)}h</div>
-          <hr/>
-          <div>
-            ${(entries || []).map((e: any) => `
-              <div style="margin:16px 0; padding:12px; border:1px solid #eee; border-radius:8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                  <div><strong>${e.tasks?.name || "Sin asignar"}</strong></div>
-                  <div>${e.hours}h</div>
-                </div>
-                ${e.notes ? `<pre style="white-space:pre-wrap; margin-top:8px;">${e.notes}</pre>` : `<em style="color:#888;">Sin notas</em>`}
-              </div>
-            `).join("")}
-          </div>
-        </div>
-      `;
-      await html2pdf().set({ margin: 10, filename: `reporte-diario-${project.name}-${date}.pdf` }).from(html).save();
+      // Prepara contexto compacto para el prompt
+      const ctx = (entries || []).map(e => ({
+        task: e.tasks?.name || "Sin asignar",
+        hours: e.hours,
+        notes: e.notes || ""
+      }));
+
+      const prompt = `
+Eres un analista de proyectos. Con el siguiente contexto, genera un REPORTE DIARIO en HTML claro y profesional.
+- Mantén el idioma en español.
+- Incluye secciones: "Resumen del día", "Actividades por tarea", "Riesgos/Impedimentos" (si existen), "Próximos pasos".
+- Menciona el total de horas del día y distribuciones por tarea.
+- Si una nota está vacía, indica "Sin notas".
+- Entrega SOLO HTML válido (sin <html> ni <body>), con subtítulos (<h2>) y listas (<ul>).
+
+Proyecto: ${project.name}
+Fecha: ${format(new Date(date), "EEEE, d 'de' MMMM yyyy", { locale: es })}
+Total horas del día: ${total.toFixed(1)}h
+
+Entradas (JSON):
+${JSON.stringify(ctx, null, 2)}
+      `.trim();
+
+      const aiHtml = await generateWithAI(prompt);
+      const html = wrapPdfHtml(`Reporte Diario — ${project.name} — ${format(new Date(date), "PPP", { locale: es })}`, aiHtml || `
+        <p><strong>Total horas:</strong> ${total.toFixed(1)}h</p>
+        <ul>${ctx.map(c => `<li><strong>${c.task}</strong> — ${c.hours}h<br/>${c.notes ? DOMPurify.sanitize(c.notes) : "<em>Sin notas</em>"}</li>`).join("")}</ul>
+      `);
+
+      await html2pdf().set({
+        margin: 10,
+        filename: `reporte-diario-${project.name}-${date}.pdf`
+      }).from(html).save();
       
       toast({
         title: "Reporte generado",
         description: "El reporte diario se ha descargado correctamente",
       });
-    } catch (err) {
+    } catch (_e) {
       toast({ title: "Error", description: "No se pudo generar el reporte diario.", variant: "destructive" });
     }
   }
@@ -66,7 +95,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
     try {
       const { data: tasks, error } = await supabase
         .from("tasks")
-        .select("name, estimated_hours_min, estimated_hours_max, actual_hours, progress")
+        .select("name, description, estimated_hours_min, estimated_hours_max, actual_hours, progress")
         .eq("project_id", project.id)
         .order("display_order");
       if (error) throw error;
@@ -79,46 +108,76 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
 
       const overall = totals.estMax > 0 ? Math.min(100, Math.round((totals.actual / totals.estMax) * 100)) : 0;
 
-      const html = `
-        <div style="font-family: Inter, system-ui, -apple-system, Segoe UI; padding:24px; max-width:800px">
-          <h1 style="margin:0 0 4px 0;">Reporte de Estado — ${project.name}</h1>
-          <div style="color:#666; margin-bottom:16px;">Generado: ${format(new Date(), "PPPp", { locale: es })}</div>
-          <div style="margin-bottom:16px;">
-            <div><strong>Progreso general:</strong> ${overall}%</div>
-            <div><strong>Horas reales:</strong> ${totals.actual.toFixed(1)}h</div>
-            <div><strong>Estimado total (max):</strong> ${totals.estMax.toFixed(1)}h</div>
-          </div>
-          <hr/>
-          <h2 style="margin-top:16px;">Detalle por tarea</h2>
-          <table style="width:100%; border-collapse:collapse; font-size:14px;">
-            <thead>
+      const ctx = (tasks || []).map(t => ({
+        name: t.name,
+        description: t.description || "",
+        estMin: t.estimated_hours_min,
+        estMax: t.estimated_hours_max,
+        actual: t.actual_hours || 0,
+        progress: t.progress || 0
+      }));
+
+      const prompt = `
+Eres un project manager. Genera un REPORTE DE ESTADO en HTML (sin <html>/<body>) para ejecutivos.
+- Idioma: español, tono profesional.
+- Incluye: "Resumen ejecutivo", "Métricas generales", "Progreso por tarea" (puedes usar una lista o tabla simple), "Riesgos y mitigaciones", "Próximos pasos".
+- Usa números redondeados y porcentajes claros.
+- NO inventes datos. Usa solo el contexto provisto.
+
+Proyecto: ${project.name}
+Fecha: ${format(new Date(), "PPPp", { locale: es })}
+Métricas:
+- Horas reales: ${totals.actual.toFixed(1)}h
+- Estimado total (max): ${totals.estMax.toFixed(1)}h
+- Progreso general: ${overall}%
+
+Tareas (JSON):
+${JSON.stringify(ctx, null, 2)}
+      `.trim();
+
+      const aiHtml = await generateWithAI(prompt);
+
+      // tabla determinística como backup
+      const fallbackTable = `
+        <h2>Detalle por tarea</h2>
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+          <thead>
+            <tr>
+              <th style="text-align:left; border-bottom:1px solid #eee; padding:8px;">Tarea</th>
+              <th style="text-align:right; border-bottom:1px solid #eee; padding:8px;">Est. (max)</th>
+              <th style="text-align:right; border-bottom:1px solid #eee; padding:8px;">Horas reales</th>
+              <th style="text-align:right; border-bottom:1px solid #eee; padding:8px;">Progreso</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(tasks || []).map((t: any) => `
               <tr>
-                <th style="text-align:left; border-bottom:1px solid #eee; padding:8px;">Tarea</th>
-                <th style="text-align:right; border-bottom:1px solid #eee; padding:8px;">Est. (max)</th>
-                <th style="text-align:right; border-bottom:1px solid #eee; padding:8px;">Horas reales</th>
-                <th style="text-align:right; border-bottom:1px solid #eee; padding:8px;">Progreso</th>
+                <td style="padding:8px; border-bottom:1px solid #f3f3f3;">${t.name}</td>
+                <td style="padding:8px; text-align:right; border-bottom:1px solid #f3f3f3;">${t.estimated_hours_max ?? "-"}</td>
+                <td style="padding:8px; text-align:right; border-bottom:1px solid #f3f3f3;">${(t.actual_hours ?? 0).toFixed(1)}</td>
+                <td style="padding:8px; text-align:right; border-bottom:1px solid #f3f3f3;">${t.progress ?? 0}%</td>
               </tr>
-            </thead>
-            <tbody>
-              ${(tasks || []).map((t: any) => `
-                <tr>
-                  <td style="padding:8px; border-bottom:1px solid #f3f3f3;">${t.name}</td>
-                  <td style="padding:8px; text-align:right; border-bottom:1px solid #f3f3f3;">${t.estimated_hours_max ?? "-"}</td>
-                  <td style="padding:8px; text-align:right; border-bottom:1px solid #f3f3f3;">${(t.actual_hours ?? 0).toFixed(1)}</td>
-                  <td style="padding:8px; text-align:right; border-bottom:1px solid #f3f3f3;">${t.progress ?? 0}%</td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        </div>
+            `).join("")}
+          </tbody>
+        </table>
       `;
-      await html2pdf().set({ margin: 10, filename: `reporte-estado-${project.name}.pdf` }).from(html).save();
+
+      const html = wrapPdfHtml(`Reporte de Estado — ${project.name}`, aiHtml || `
+        <h2>Resumen ejecutivo</h2>
+        <p>Horas reales: ${totals.actual.toFixed(1)}h. Estimado (max): ${totals.estMax.toFixed(1)}h. Progreso general: ${overall}%.</p>
+        ${fallbackTable}
+      `);
+
+      await html2pdf().set({
+        margin: 10,
+        filename: `reporte-estado-${project.name}.pdf`
+      }).from(html).save();
       
       toast({
         title: "Reporte generado",
         description: "El reporte de estado se ha descargado correctamente",
       });
-    } catch (err) {
+    } catch (_e) {
       toast({ title: "Error", description: "No se pudo generar el reporte de estado.", variant: "destructive" });
     }
   }

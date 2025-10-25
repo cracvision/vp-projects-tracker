@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BarChart3 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
 import { useToast } from "@/hooks/use-toast";
 import ProjectSummary from "@/components/project-detail/ProjectSummary";
 import TaskSection from "@/components/project-detail/TaskSection";
@@ -111,9 +112,7 @@ const ProjectDetail = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-3 flex-1">
-              <div className="p-2 rounded-lg bg-gradient-primary">
-                <BarChart3 className="h-6 w-6 text-primary-foreground" />
-              </div>
+              <BrandLogo className="h-8 w-auto" />
               <div>
                 <h1 className="text-xl font-bold">
                   {project?.name || "Proyecto sin nombre"}

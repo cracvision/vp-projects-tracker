@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BarChart3, Plus, Search, LogOut } from "lucide-react";
+import { Plus, Search, LogOut } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
 import { useToast } from "@/hooks/use-toast";
 import ProjectCard from "@/components/projects/ProjectCard";
 import CreateProjectDialog from "@/components/projects/CreateProjectDialog";
@@ -92,9 +93,7 @@ const Home = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gradient-primary">
-                <BarChart3 className="h-6 w-6 text-primary-foreground" />
-              </div>
+              <BrandLogo className="h-8 w-auto" />
               <div>
                 <h1 className="text-xl font-bold">VP Projects Tracker</h1>
                 <p className="text-sm text-muted-foreground">{user?.email}</p>

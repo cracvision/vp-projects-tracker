@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { BarChart3 } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
 import { validateEmail, sanitizeText, validateRequired } from "@/lib/validation";
 
 const Auth = () => {
@@ -112,9 +112,7 @@ const Auth = () => {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <div className="flex justify-center">
-            <div className="p-4 rounded-2xl bg-gradient-primary">
-              <BarChart3 className="h-10 w-10 text-primary-foreground" />
-            </div>
+            <BrandLogo className="h-16 w-auto" />
           </div>
           <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
             VP Projects Tracker

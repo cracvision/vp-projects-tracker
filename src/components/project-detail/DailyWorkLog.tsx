@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import DailyEntriesList from "./DailyEntriesList";
 import { sanitizeText, validateNumber } from "@/lib/validation";
+import { generateWithAI } from "@/lib/ai";
 
 interface DailyWorkLogProps {
   projectId: string;
@@ -38,6 +39,7 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
   });
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [improving, setImproving] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -168,34 +170,32 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
                   type="button"
                   variant="outline"
                   size="sm"
+                  disabled={improving || !formData.notes.trim()}
                   onClick={async () => {
                     const input = formData.notes.trim();
                     if (!input) return;
+                    setImproving(true);
                     try {
-                      // @ts-ignore — algunos entornos exponen lovable.ai
-                      const ai = (window as any)?.lovable?.ai;
-                      if (ai?.generate) {
-                        const res = await ai.generate({
-                          prompt: `Mejora y estructura estas notas de avance en viñetas claras y concisas:\n\n${input}`,
-                        });
-                        const improved = res?.text || input;
-                        setFormData((s) => ({ ...s, notes: improved }));
-                      } else {
-                        // fallback simple: viñetas básicas
-                        const bullets = input
-                          .split(/\n+/)
-                          .map(l => l.trim())
-                          .filter(Boolean)
-                          .map(l => `• ${l}`)
-                          .join("\n");
-                        setFormData((s) => ({ ...s, notes: bullets }));
-                      }
-                    } catch {
-                      // en caso de error, no rompas el flujo
+                      const prompt = `
+Eres un redactor técnico. Reescribe las siguientes notas de trabajo en un tono profesional, claro y conciso.
+- Mantén el idioma original del texto (si está en español, responde en español).
+- Corrige ortografía/gramática y evita jerga innecesaria.
+- Estructura en formato fácil de leer por humanos: usa subtítulos breves y viñetas cuando aplique.
+- No inventes información; no agregues datos no presentes.
+- Devuelve SOLO el contenido final en Markdown, sin prefacios.
+
+Notas:
+${input}
+                      `.trim();
+
+                      const out = await generateWithAI(prompt);
+                      setFormData((s) => ({ ...s, notes: out || s.notes }));
+                    } finally {
+                      setImproving(false);
                     }
                   }}
                 >
-                  Mejorar con AI
+                  {improving ? "Mejorando…" : "Mejorar con AI"}
                 </Button>
               </div>
             </div>
