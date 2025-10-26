@@ -4,6 +4,7 @@ import { Clock, DollarSign, TrendingUp, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import EditDueDate from "./EditDueDate";
 
 interface ProjectSummaryProps {
   project: {
@@ -13,9 +14,10 @@ interface ProjectSummaryProps {
     hourly_rate: number;
   };
   refreshKey: number;
+  onProjectUpdated?: () => void;
 }
 
-const ProjectSummary = ({ project, refreshKey }: ProjectSummaryProps) => {
+const ProjectSummary = ({ project, refreshKey, onProjectUpdated }: ProjectSummaryProps) => {
   const [metrics, setMetrics] = useState({
     hoursWorked: 0,
     budgetUsed: 0,
@@ -86,6 +88,8 @@ const ProjectSummary = ({ project, refreshKey }: ProjectSummaryProps) => {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {metricCards.map((metric) => {
         const Icon = metric.icon;
+        const isDueDateCard = metric.title === "Fecha de Entrega";
+        
         return (
           <Card key={metric.title} className="border-0 shadow-md">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -97,7 +101,15 @@ const ProjectSummary = ({ project, refreshKey }: ProjectSummaryProps) => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{metric.value}</div>
+              {isDueDateCard ? (
+                <EditDueDate
+                  projectId={project.id}
+                  value={project.due_date}
+                  onUpdated={onProjectUpdated ?? (() => {})}
+                />
+              ) : (
+                <div className="text-2xl font-bold">{metric.value}</div>
+              )}
             </CardContent>
           </Card>
         );

@@ -129,7 +129,7 @@ const ProjectDetail = () => {
       <main className="container mx-auto px-4 py-8 space-y-8">
         {project && (
           <>
-            <ProjectSummary project={project} refreshKey={refreshKey} />
+            <ProjectSummary project={project} refreshKey={refreshKey} onProjectUpdated={handleRefresh} />
             <TaskSection projectId={project.id} onTaskUpdate={handleRefresh} />
             <DailyWorkLog
               projectId={project.id}
