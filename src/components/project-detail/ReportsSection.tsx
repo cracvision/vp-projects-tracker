@@ -10,27 +10,14 @@ import DOMPurify from "dompurify";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { generateWithAI } from "@/lib/ai";
-import { BRAND_LOGO_URL } from "@/lib/brand";
 import { ymdToLocalDate } from "@/lib/date";
+import { wrapPdfHtml, fmt, fmtTime, fmtStamp } from "@/lib/reports";
 
 interface ReportsSectionProps {
   project: {
     id: string;
     name: string;
   };
-}
-
-function wrapPdfHtml(title: string, bodyHtml: string) {
-  const safeBody = DOMPurify.sanitize(bodyHtml, { USE_PROFILES: { html: true } });
-  return `
-    <div style="font-family: Inter, system-ui, -apple-system, Segoe UI; padding:24px; max-width:900px; color:#111;">
-      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-        <img src="${BRAND_LOGO_URL}" alt="logo" style="height:36px; width:auto;" />
-        <h1 style="margin:0; font-size:22px;">${title}</h1>
-      </div>
-      ${safeBody}
-    </div>
-  `;
 }
 
 const ReportsSection = ({ project }: ReportsSectionProps) => {
@@ -49,59 +36,38 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
 
       const total = (entries || []).reduce((s, e) => s + (e.hours || 0), 0);
 
-      // Prepara contexto con hora exacta
-      const ctx = (entries || []).map(e => ({
-        task: e.tasks?.name || "Sin asignar",
-        hours: e.hours,
-        time: format(new Date(e.created_at), "HH:mm"),
-        notes: e.notes || ""
-      }));
-
-      const prompt = `
-Eres un asistente que redacta resúmenes ejecutivos claros, profesionales y concisos en español.
-Genera un "Reporte Diario" de trabajo para el proyecto "${project.name}" del día ${format(ymdToLocalDate(date), "EEEE, d 'de' MMMM yyyy", { locale: es })}.
-Usa un tono formal, corrige typos y organiza en secciones:
-
-1) Resumen ejecutivo (3–5 viñetas).
-2) Detalle por tarea (viñetas sintetizadas, 1–4 por tarea, usando solo la información dada).
-
-Entrega SOLO HTML válido (sin <html> ni <body>), con subtítulos (<h2>) y listas (<ul>).
-
-Datos (JSON):
-${JSON.stringify(ctx, null, 2)}
-      `.trim();
-
-      const aiHtml = await generateWithAI(prompt);
-      
-      const dayLabel = format(ymdToLocalDate(date), "EEEE, d 'de' MMMM yyyy", { locale: es });
-      const entriesHtml = (entries || []).map((e: any) => `
-        <div style="margin:12px 0; padding:12px; border:1px solid #eee; border-radius:8px;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <strong>${e.tasks?.name || "Sin asignar"}</strong>
-              <span style="color:#888; margin-left:8px;">${format(new Date(e.created_at), "HH:mm")}</span>
+      const body = `
+        <h2>Entradas del día — ${fmt(date)}</h2>
+        <div class="hr"></div>
+        <div class="kpi">Total horas: ${total.toFixed(1)}h</div>
+        <div style="margin-top:12px;">
+          ${(entries || []).map((e: any) => `
+            <div class="entry">
+              <div style="display:flex; justify-content:space-between; gap:8px;">
+                <div><strong>${e.tasks?.name || "Sin asignar"}</strong> • ${fmtTime(e.created_at)}</div>
+                <div>${e.hours}h</div>
+              </div>
+              ${e.notes ? `<div class="pre" style="margin-top:6px;">${DOMPurify.sanitize(e.notes)}</div>` : `<em class="muted">Sin notas</em>`}
             </div>
-            <div>${e.hours}h</div>
-          </div>
-          ${e.notes ? `<pre style="white-space:pre-wrap; margin-top:8px; font-family:inherit;">${DOMPurify.sanitize(e.notes)}</pre>` : `<em style="color:#888;">Sin notas</em>`}
+          `).join("")}
         </div>
-      `).join("");
-
-      const bodyHtml = `
-        <div style="color:#666; margin-bottom:12px;">${dayLabel}</div>
-        <div style="margin:8px 0 16px 0;"><strong>Total horas:</strong> ${total.toFixed(1)}h</div>
-        ${aiHtml || ""}
-        <hr style="margin:20px 0;"/>
-        <h2 style="margin:16px 0 8px 0;">Entradas del día</h2>
-        <div>${entriesHtml}</div>
       `;
 
-      const html = wrapPdfHtml(`Reporte Diario — ${project.name}`, bodyHtml);
+      const html = await wrapPdfHtml({
+        title: `Reporte Diario — ${project.name}`,
+        subtitle: format(new Date(), "PPPp", { locale: es }),
+        body,
+      });
 
-      await html2pdf().set({
-        margin: 10,
-        filename: `reporte-diario-${project.name}-${date}.pdf`
-      }).from(html).save();
+      await html2pdf()
+        .set({
+          margin: 10,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
+        })
+        .from(html)
+        .save(`reporte-diario-${project.name}-${date}.pdf`);
       
       toast({
         title: "Reporte generado",
@@ -114,120 +80,123 @@ ${JSON.stringify(ctx, null, 2)}
 
   async function generateStatus() {
     try {
+      // 1) Traer tareas
       const { data: tasks, error: tErr } = await supabase
         .from("tasks")
-        .select("id, name, description, estimated_hours_max, actual_hours, progress")
+        .select("id, name, description, estimated_hours_min, estimated_hours_max, actual_hours, progress")
         .eq("project_id", project.id)
         .order("display_order");
       if (tErr) throw tErr;
 
+      // 2) Traer TODAS las entradas
       const { data: entries, error: eErr } = await supabase
         .from("daily_entries")
-        .select("id, task_id, date_iso, created_at, hours, notes, tasks(name)")
+        .select("task_id, date_iso, hours, notes, created_at, tasks(name)")
         .eq("project_id", project.id)
-        .order("date_iso, created_at", { ascending: true });
+        .order("date_iso", { ascending: true })
+        .order("created_at", { ascending: true });
       if (eErr) throw eErr;
 
-      // Agrupar entradas por tarea
-      const byTask: Record<string, any[]> = {};
-      (entries || []).forEach((e) => {
-        const k = e.task_id ?? "__unassigned__";
-        (byTask[k] ||= []).push(e);
-      });
-
-      const totals = (tasks || []).reduce((acc: any, t: any) => {
-        acc.actual += t.actual_hours || 0;
-        acc.estMax += t.estimated_hours_max || 0;
-        return acc;
-      }, { actual: 0, estMax: 0 });
-      
+      // 3) Totales y progreso general
+      const totals = (tasks || []).reduce(
+        (acc: any, t: any) => {
+          acc.actual += t.actual_hours || 0;
+          acc.estMax += t.estimated_hours_max || 0;
+          return acc;
+        },
+        { actual: 0, estMax: 0 }
+      );
       const overall = totals.estMax > 0 ? Math.min(100, Math.round((totals.actual / totals.estMax) * 100)) : 0;
 
-      const prompt = `
-Eres un Project Manager. Resume el estado del proyecto "${project.name}" con estos datos:
-Tareas: ${JSON.stringify((tasks || []).map(t => ({
-  name: t.name,
-  description: t.description || "",
-  estimated_max: t.estimated_hours_max,
-  actual_hours: t.actual_hours,
-  progress: t.progress
-})))}
-Entradas: ${JSON.stringify((entries || []).map(e => ({
-  task: e.tasks?.name ?? "Sin asignar",
-  date: e.date_iso,
-  hours: e.hours,
-  notes: e.notes?.slice(0, 300)
-})) ?? [])}
-Redacta 4-6 viñetas claras: progreso, bloqueos si se deducen, prioridades y próximos pasos. Español profesional.
-Entrega SOLO HTML válido (sin <html> ni <body>), con subtítulos (<h2>) y listas (<ul>).
-      `.trim();
+      // 4) Agrupar entradas por tarea (incluye "Sin asignar")
+      const byTask: Record<string, any[]> = {};
+      (entries || []).forEach((e) => {
+        const key = e.task_id || "unassigned";
+        if (!byTask[key]) byTask[key] = [];
+        byTask[key].push(e);
+      });
 
-      const executive = await generateWithAI(prompt);
-
-      const taskTable = `
-        <h3 style="margin-top:20px;">Detalle por tarea</h3>
-        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+      // 5) Sección resumen + tabla
+      const summaryHtml = `
+        <div class="kpi">Progreso general: ${overall}%</div>
+        <div class="kpi">Horas reales: ${totals.actual.toFixed(1)}h</div>
+        <div class="kpi">Estimado total (max): ${totals.estMax.toFixed(1)}h</div>
+        <div class="hr"></div>
+        <h2>Detalle por tarea</h2>
+        <table>
           <thead>
             <tr>
-              <th style="text-align:left; border-bottom:1px solid #eee; padding:8px;">Tarea</th>
-              <th style="text-align:right; border-bottom:1px solid #eee; padding:8px;">Est. (max)</th>
-              <th style="text-align:right; border-bottom:1px solid #eee; padding:8px;">Horas reales</th>
-              <th style="text-align:right; border-bottom:1px solid #eee; padding:8px;">Progreso</th>
+              <th>Tarea</th>
+              <th>Est. (max)</th>
+              <th>Horas reales</th>
+              <th>Progreso</th>
             </tr>
           </thead>
           <tbody>
             ${(tasks || []).map((t: any) => `
               <tr>
-                <td style="padding:8px; border-bottom:1px solid #f3f3f3;">${t.name}</td>
-                <td style="padding:8px; text-align:right; border-bottom:1px solid #f3f3f3;">${t.estimated_hours_max ?? "-"}</td>
-                <td style="padding:8px; text-align:right; border-bottom:1px solid #f3f3f3;">${(t.actual_hours ?? 0).toFixed(1)}</td>
-                <td style="padding:8px; text-align:right; border-bottom:1px solid #f3f3f3;">${t.progress ?? 0}%</td>
+                <td>${t.name}</td>
+                <td>${t.estimated_hours_max ?? "-"}</td>
+                <td>${(t.actual_hours ?? 0).toFixed(1)}</td>
+                <td>${t.progress ?? 0}%</td>
               </tr>
             `).join("")}
           </tbody>
         </table>
       `;
 
-      const logs = `
-        <h3 style="margin-top:24px;">Bitácora por tarea</h3>
-        ${(tasks || []).concat([{ id: "__unassigned__", name: "Sin asignar" } as any]).map((t: any) => {
-          const list = byTask[t.id] || [];
-          if (!list.length) return "";
-          return `
-            <div style="margin:14px 0; padding:12px; border:1px solid #eee; border-radius:8px;">
-              <div style="font-weight:600; margin-bottom:8px;">${t.name}</div>
-              ${list.map(e => `
-                <div style="margin:8px 0;">
-                  <div style="color:#555; font-size:13px;">
-                    ${format(ymdToLocalDate(e.date_iso), "PPP", { locale: es })} · ${format(new Date(e.created_at), "HH:mm")} · ${e.hours}h
+      // 6) Bitácora completa por tarea
+      const tasksWithUnassigned = [
+        ...(tasks || []),
+        { id: "unassigned", name: "Sin asignar", description: null, estimated_hours_max: null, actual_hours: null, progress: null },
+      ];
+
+      const journalHtml = `
+        <div class="hr"></div>
+        <h2>Bitácora por tarea</h2>
+        <div style="margin-top:8px;">
+          ${tasksWithUnassigned.map((t: any) => {
+            const list = byTask[t.id] || [];
+            if (list.length === 0) return `
+              <div style="margin:12px 0;">
+                <h3>${t.name}</h3>
+                <div class="muted">Sin entradas registradas.</div>
+              </div>
+            `;
+            return `
+              <div style="margin:12px 0;">
+                <h3>${t.name}</h3>
+                ${t.description ? `<div class="muted" style="margin-bottom:6px;">${DOMPurify.sanitize(t.description)}</div>` : ""}
+                ${list.map((e: any) => `
+                  <div class="entry">
+                    <div style="display:flex; justify-content:space-between; gap:8px;">
+                      <div>${fmtStamp(e.date_iso || e.created_at)}</div>
+                      <div><strong>${e.hours}h</strong></div>
+                    </div>
+                    ${e.notes ? `<div class="pre" style="margin-top:6px;">${DOMPurify.sanitize(e.notes)}</div>` : `<em class="muted">Sin notas</em>`}
                   </div>
-                  ${e.notes ? `<pre style="white-space:pre-wrap; margin:4px 0 0 0; font-family:inherit;">${DOMPurify.sanitize(e.notes)}</pre>` : `<em style="color:#888;">Sin notas</em>`}
-                </div>
-              `).join("")}
-            </div>
-          `;
-        }).join("")}
-      `;
-
-      const bodyHtml = `
-        <div style="color:#666; margin-bottom:16px;">Generado: ${format(new Date(), "PPPp", { locale: es })}</div>
-        <div style="margin-bottom:16px;">
-          <div><strong>Progreso general:</strong> ${overall}%</div>
-          <div><strong>Horas reales:</strong> ${totals.actual.toFixed(1)}h</div>
-          <div><strong>Estimado total (max):</strong> ${totals.estMax.toFixed(1)}h</div>
+                `).join("")}
+              </div>
+            `;
+          }).join("")}
         </div>
-        ${executive ? `<div style="padding:12px;border:1px solid #eee;border-radius:8px;margin-bottom:16px;"><strong>Resumen ejecutivo (IA)</strong><br/>${executive}</div>` : ""}
-        <hr style="margin:20px 0;"/>
-        ${taskTable}
-        ${logs}
       `;
 
-      const html = wrapPdfHtml(`Reporte de Estado — ${project.name}`, bodyHtml);
+      const html = await wrapPdfHtml({
+        title: `Reporte de Estado — ${project.name}`,
+        subtitle: format(new Date(), "PPPp", { locale: es }),
+        body: summaryHtml + journalHtml,
+      });
 
-      await html2pdf().set({
-        margin: 10,
-        filename: `reporte-estado-${project.name}.pdf`
-      }).from(html).save();
+      await html2pdf()
+        .set({
+          margin: 10,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
+        })
+        .from(html)
+        .save(`reporte-estado-${project.name}.pdf`);
       
       toast({
         title: "Reporte generado",
