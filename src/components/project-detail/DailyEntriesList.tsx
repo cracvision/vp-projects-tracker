@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { Input } from "@/components/ui/input";
+import { ymdToLocalDate } from "@/lib/date";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -115,9 +117,21 @@ const DailyEntriesList = ({
             {totalHours.toFixed(1)}h
           </Badge>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {format(new Date(selectedDate), "EEEE, d 'de' MMMM yyyy", { locale: es })}
-        </p>
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            {format(ymdToLocalDate(selectedDate), "EEEE, d 'de' MMMM yyyy", { locale: es })}
+          </p>
+          <div>
+            <label className="text-xs text-muted-foreground">Cambiar fecha mostrada</label>
+            <Input
+              type="date"
+              value={selectedDate}
+              max={format(new Date(), "yyyy-MM-dd")}
+              onChange={(e) => onDateChange(e.target.value)}
+              className="mt-1 w-[200px]"
+            />
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (

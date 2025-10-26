@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { generateWithAI } from "@/lib/ai";
 import { BRAND_LOGO_URL } from "@/lib/brand";
+import { ymdToLocalDate } from "@/lib/date";
 
 interface ReportsSectionProps {
   project: {
@@ -58,7 +59,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
 
       const prompt = `
 Eres un asistente que redacta resúmenes ejecutivos claros, profesionales y concisos en español.
-Genera un "Reporte Diario" de trabajo para el proyecto "${project.name}" del día ${format(new Date(date), "EEEE, d 'de' MMMM yyyy", { locale: es })}.
+Genera un "Reporte Diario" de trabajo para el proyecto "${project.name}" del día ${format(ymdToLocalDate(date), "EEEE, d 'de' MMMM yyyy", { locale: es })}.
 Usa un tono formal, corrige typos y organiza en secciones:
 
 1) Resumen ejecutivo (3–5 viñetas).
@@ -72,7 +73,7 @@ ${JSON.stringify(ctx, null, 2)}
 
       const aiHtml = await generateWithAI(prompt);
       
-      const dayLabel = format(new Date(date), "EEEE, d 'de' MMMM yyyy", { locale: es });
+      const dayLabel = format(ymdToLocalDate(date), "EEEE, d 'de' MMMM yyyy", { locale: es });
       const entriesHtml = (entries || []).map((e: any) => `
         <div style="margin:12px 0; padding:12px; border:1px solid #eee; border-radius:8px;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -120,16 +121,19 @@ ${JSON.stringify(ctx, null, 2)}
         .order("display_order");
       if (tErr) throw tErr;
 
-      // últimos 14 días para contexto
-      const since = new Date(); 
-      since.setDate(since.getDate() - 14);
       const { data: entries, error: eErr } = await supabase
         .from("daily_entries")
-        .select("hours, notes, created_at, tasks(name)")
+        .select("id, task_id, date_iso, created_at, hours, notes, tasks(name)")
         .eq("project_id", project.id)
-        .gte("created_at", since.toISOString())
-        .order("created_at", { ascending: true });
+        .order("date_iso, created_at", { ascending: true });
       if (eErr) throw eErr;
+
+      // Agrupar entradas por tarea
+      const byTask: Record<string, any[]> = {};
+      (entries || []).forEach((e) => {
+        const k = e.task_id ?? "__unassigned__";
+        (byTask[k] ||= []).push(e);
+      });
 
       const totals = (tasks || []).reduce((acc: any, t: any) => {
         acc.actual += t.actual_hours || 0;
@@ -140,33 +144,28 @@ ${JSON.stringify(ctx, null, 2)}
       const overall = totals.estMax > 0 ? Math.min(100, Math.round((totals.actual / totals.estMax) * 100)) : 0;
 
       const prompt = `
-Eres un PMO. Redacta un "Reporte de Estado" profesional y conciso en español para el proyecto "${project.name}".
-Incluye: Resumen ejecutivo, Logros recientes, Riesgos/Bloqueos (si se infieren), y Próximos pasos.
-Usa bullets claras y corrige typos. Máx ~250 palabras.
-Entrega SOLO HTML válido (sin <html> ni <body>), con subtítulos (<h2>) y listas (<ul>).
-
-Tareas (JSON):
-${JSON.stringify((tasks || []).map(t => ({
+Eres un Project Manager. Resume el estado del proyecto "${project.name}" con estos datos:
+Tareas: ${JSON.stringify((tasks || []).map(t => ({
   name: t.name,
   description: t.description || "",
   estimated_max: t.estimated_hours_max,
   actual_hours: t.actual_hours,
   progress: t.progress
-})), null, 2)}
-
-Entradas últimas 2 semanas (JSON):
-${JSON.stringify((entries || []).map(e => ({
-  task: e.tasks?.name || "Sin asignar",
+})))}
+Entradas: ${JSON.stringify((entries || []).map(e => ({
+  task: e.tasks?.name ?? "Sin asignar",
+  date: e.date_iso,
   hours: e.hours,
-  time: format(new Date(e.created_at), "yyyy-MM-dd HH:mm"),
-  notes: e.notes || ""
-})), null, 2)}
+  notes: e.notes?.slice(0, 300)
+})) ?? [])}
+Redacta 4-6 viñetas claras: progreso, bloqueos si se deducen, prioridades y próximos pasos. Español profesional.
+Entrega SOLO HTML válido (sin <html> ni <body>), con subtítulos (<h2>) y listas (<ul>).
       `.trim();
 
-      const aiHtml = await generateWithAI(prompt);
+      const executive = await generateWithAI(prompt);
 
       const taskTable = `
-        <h2 style="margin:16px 0 8px 0;">Detalle por tarea</h2>
+        <h3 style="margin-top:20px;">Detalle por tarea</h3>
         <table style="width:100%; border-collapse:collapse; font-size:14px;">
           <thead>
             <tr>
@@ -189,6 +188,27 @@ ${JSON.stringify((entries || []).map(e => ({
         </table>
       `;
 
+      const logs = `
+        <h3 style="margin-top:24px;">Bitácora por tarea</h3>
+        ${(tasks || []).concat([{ id: "__unassigned__", name: "Sin asignar" } as any]).map((t: any) => {
+          const list = byTask[t.id] || [];
+          if (!list.length) return "";
+          return `
+            <div style="margin:14px 0; padding:12px; border:1px solid #eee; border-radius:8px;">
+              <div style="font-weight:600; margin-bottom:8px;">${t.name}</div>
+              ${list.map(e => `
+                <div style="margin:8px 0;">
+                  <div style="color:#555; font-size:13px;">
+                    ${format(ymdToLocalDate(e.date_iso), "PPP", { locale: es })} · ${format(new Date(e.created_at), "HH:mm")} · ${e.hours}h
+                  </div>
+                  ${e.notes ? `<pre style="white-space:pre-wrap; margin:4px 0 0 0; font-family:inherit;">${DOMPurify.sanitize(e.notes)}</pre>` : `<em style="color:#888;">Sin notas</em>`}
+                </div>
+              `).join("")}
+            </div>
+          `;
+        }).join("")}
+      `;
+
       const bodyHtml = `
         <div style="color:#666; margin-bottom:16px;">Generado: ${format(new Date(), "PPPp", { locale: es })}</div>
         <div style="margin-bottom:16px;">
@@ -196,9 +216,10 @@ ${JSON.stringify((entries || []).map(e => ({
           <div><strong>Horas reales:</strong> ${totals.actual.toFixed(1)}h</div>
           <div><strong>Estimado total (max):</strong> ${totals.estMax.toFixed(1)}h</div>
         </div>
-        ${aiHtml || ""}
+        ${executive ? `<div style="padding:12px;border:1px solid #eee;border-radius:8px;margin-bottom:16px;"><strong>Resumen ejecutivo (IA)</strong><br/>${executive}</div>` : ""}
         <hr style="margin:20px 0;"/>
         ${taskTable}
+        ${logs}
       `;
 
       const html = wrapPdfHtml(`Reporte de Estado — ${project.name}`, bodyHtml);

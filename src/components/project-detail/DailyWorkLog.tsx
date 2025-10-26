@@ -176,14 +176,11 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
                     if (!input) return;
                     setImproving(true);
                     try {
-                      const { data, error } = await supabase.functions.invoke('improve-notes', {
-                        body: { notes: input }
-                      });
-
-                      if (error) throw error;
-
-                      if (data?.improvedNotes) {
-                        setFormData((s) => ({ ...s, notes: data.improvedNotes }));
+                      const improved = await generateWithAI(
+                        `Reescribe profesionalmente estas notas de avance. Mantén el contenido, corrige errores, ordena ideas y presenta un formato fácil de leer. Devuelve solo el texto final mejorado:\n\n${input}`
+                      );
+                      if (improved) {
+                        setFormData((s) => ({ ...s, notes: improved }));
                         toast({
                           title: "Nota mejorada",
                           description: "La IA ha mejorado tu nota",

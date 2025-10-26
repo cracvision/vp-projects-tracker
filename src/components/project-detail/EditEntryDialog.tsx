@@ -54,8 +54,11 @@ export default function EditEntryDialog({
     e.preventDefault();
     setSaving(true);
     try {
+      const normalizedTaskId =
+        !form.taskId || form.taskId === "none" || form.taskId.trim() === "" ? null : form.taskId;
+
       const payload = {
-        task_id: !form.taskId || form.taskId === "none" ? null : form.taskId,
+        task_id: normalizedTaskId,
         hours: validateNumber(form.hours, 0.1, 24),
         notes: sanitizeText(form.notes, 2000),
       };
