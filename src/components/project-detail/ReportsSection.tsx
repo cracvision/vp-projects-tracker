@@ -85,7 +85,8 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         .from("tasks")
         .select("id, name, description, estimated_hours_min, estimated_hours_max, actual_hours, progress")
         .eq("project_id", project.id)
-        .order("display_order");
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: true });
       if (tErr) throw tErr;
 
       // 2) Traer TODAS las entradas

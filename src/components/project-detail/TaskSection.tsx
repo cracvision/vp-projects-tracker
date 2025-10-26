@@ -39,7 +39,8 @@ const TaskSection = ({ projectId, onTaskUpdate }: TaskSectionProps) => {
         .from("tasks")
         .select("*")
         .eq("project_id", projectId)
-        .order("display_order", { ascending: true });
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: true });
 
       if (error) throw error;
       setTasks(data || []);
