@@ -1,73 +1,145 @@
-# Welcome to your Lovable project
+# Sistema de Gestión de Proyectos
 
-## Project info
+Una aplicación web completa para la gestión de proyectos freelance con tracking de tareas, registro de horas trabajadas y generación de reportes en PDF.
 
-**URL**: https://lovable.dev/projects/b3cf0e83-fe9a-40ac-b1af-8d9d9bd73d48
+## 🚀 Características Principales
 
-## How can I edit this code?
+- **Gestión de Proyectos**: Crea y administra múltiples proyectos con fechas de entrega y tarifas por hora
+- **Control de Tareas**: Sistema de tareas con estados (pendiente, en progreso, completada) y arrastre para priorización
+- **Registro Diario**: Bitácora diaria de trabajo con tracking de horas y mejora de notas con IA
+- **Reportes PDF**: Generación automática de reportes detallados con gráficos y análisis
+- **Dashboard Analítico**: Visualización de progreso, horas trabajadas y análisis de productividad
+- **Autenticación**: Sistema completo de registro e inicio de sesión
+- **Responsive Design**: Interfaz adaptable a todos los dispositivos
 
-There are several ways of editing your application.
+## 🛠️ Stack Tecnológico
 
-**Use Lovable**
+- **Frontend**: React 18 + TypeScript + Vite
+- **UI Framework**: Tailwind CSS + shadcn/ui
+- **Backend**: Lovable Cloud (Supabase)
+- **Base de Datos**: PostgreSQL con Row Level Security
+- **Autenticación**: Supabase Auth
+- **IA**: Lovable AI (Gemini Flash para mejora de notas)
+- **Generación PDF**: html2pdf.js
+- **Gráficos**: Recharts
+- **Gestión de Estado**: React Query (TanStack Query)
+- **Drag & Drop**: @dnd-kit
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/b3cf0e83-fe9a-40ac-b1af-8d9d9bd73d48) and start prompting.
+## 📦 Instalación
 
-Changes made via Lovable will be committed automatically to this repo.
+### Requisitos Previos
 
-**Use your preferred IDE**
+- Node.js 18+ y npm instalado ([instalar con nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Pasos
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+```bash
+# Clonar el repositorio
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
+# Navegar al directorio
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Instalar dependencias
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Iniciar servidor de desarrollo
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+La aplicación estará disponible en `http://localhost:5173`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📁 Estructura del Proyecto
 
-**Use GitHub Codespaces**
+```
+├── src/
+│   ├── components/          # Componentes React
+│   │   ├── ui/             # Componentes base de shadcn/ui
+│   │   ├── projects/       # Componentes de proyectos
+│   │   └── project-detail/ # Componentes de detalle de proyecto
+│   ├── pages/              # Páginas de la aplicación
+│   │   ├── Auth.tsx        # Autenticación
+│   │   ├── Home.tsx        # Dashboard principal
+│   │   └── ProjectDetail.tsx # Detalle de proyecto
+│   ├── lib/                # Utilidades y lógica de negocio
+│   │   ├── ai.ts          # Integración con IA
+│   │   ├── reports.ts     # Generación de reportes
+│   │   └── validation.ts  # Validaciones
+│   ├── integrations/       # Integraciones (auto-generado)
+│   │   └── supabase/      # Cliente Supabase
+│   └── hooks/             # Custom hooks
+├── supabase/
+│   ├── functions/         # Edge Functions
+│   └── migrations/        # Migraciones de base de datos
+└── ESPECIFICACION_TECNICA.md # Documentación técnica completa
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 💾 Base de Datos
 
-## What technologies are used for this project?
+El proyecto utiliza PostgreSQL con las siguientes tablas principales:
 
-This project is built with:
+- **projects**: Información de proyectos
+- **tasks**: Tareas asociadas a proyectos
+- **daily_work_entries**: Registro diario de trabajo
+- **task_hours**: Relación de horas trabajadas por tarea
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Ver [ESPECIFICACION_TECNICA.md](./ESPECIFICACION_TECNICA.md) para el esquema completo.
 
-## How can I deploy this project?
+## 🔐 Seguridad
 
-Simply open [Lovable](https://lovable.dev/projects/b3cf0e83-fe9a-40ac-b1af-8d9d9bd73d48) and click on Share -> Publish.
+- Row Level Security (RLS) habilitado en todas las tablas
+- Políticas de acceso basadas en `auth.uid()`
+- Autenticación obligatoria para todas las operaciones
+- Validaciones en base de datos mediante triggers
 
-## Can I connect a custom domain to my Lovable project?
+## 📝 Desarrollo
 
-Yes, you can!
+### Editar en Lovable
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Visita el [Proyecto en Lovable](https://lovable.dev/projects/b3cf0e83-fe9a-40ac-b1af-8d9d9bd73d48) para editar con IA.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Editar Localmente
+
+Puedes editar el código localmente y los cambios se sincronizarán automáticamente con Lovable.
+
+### Variables de Entorno
+
+Las variables de entorno se configuran automáticamente (`.env` es generado por Lovable Cloud):
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_SUPABASE_PROJECT_ID`
+
+## 🚢 Despliegue
+
+Abre [Lovable](https://lovable.dev/projects/b3cf0e83-fe9a-40ac-b1af-8d9d9bd73d48) y haz clic en Share → Publish.
+
+### Dominio Personalizado
+
+Puedes conectar un dominio personalizado en Project > Settings > Domains.
+
+[Más información sobre dominios personalizados](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## 📚 Documentación
+
+- [Especificación Técnica Completa](./ESPECIFICACION_TECNICA.md) - Documentación detallada de arquitectura, base de datos y funcionalidades
+- [Documentación de Lovable](https://docs.lovable.dev/)
+- [Guía de shadcn/ui](https://ui.shadcn.com/)
+
+## 🤝 Contribuir
+
+Este es un proyecto personal, pero si deseas contribuir:
+
+1. Fork el repositorio
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la licencia MIT.
+
+## 🔗 Enlaces
+
+- **Proyecto en Lovable**: https://lovable.dev/projects/b3cf0e83-fe9a-40ac-b1af-8d9d9bd73d48
+- **Documentación Técnica**: [ESPECIFICACION_TECNICA.md](./ESPECIFICACION_TECNICA.md)
