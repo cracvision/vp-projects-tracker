@@ -7,7 +7,8 @@ Una aplicación web completa para la gestión de proyectos freelance con trackin
 - **Gestión de Proyectos**: Crea y administra múltiples proyectos con fechas de entrega y tarifas por hora
 - **Control de Tareas**: Sistema de tareas con estados (pendiente, en progreso, completada) y arrastre para priorización
 - **Registro Diario**: Bitácora diaria de trabajo con tracking de horas y mejora de notas con IA
-- **Reportes PDF**: Generación automática de reportes detallados con gráficos y análisis
+- **Facturación**: Sistema completo de generación y gestión de facturas basado en horas trabajadas
+- **Reportes PDF**: Generación automática de reportes y facturas detalladas en formato profesional
 - **Dashboard Analítico**: Visualización de progreso, horas trabajadas y análisis de productividad
 - **Autenticación**: Sistema completo de registro e inicio de sesión
 - **Responsive Design**: Interfaz adaptable a todos los dispositivos
@@ -80,8 +81,10 @@ El proyecto utiliza PostgreSQL con las siguientes tablas principales:
 
 - **projects**: Información de proyectos
 - **tasks**: Tareas asociadas a proyectos
-- **daily_work_entries**: Registro diario de trabajo
-- **task_hours**: Relación de horas trabajadas por tarea
+- **daily_entries**: Registro diario de trabajo
+- **invoices**: Facturas generadas por proyecto
+- **invoice_items**: Líneas de detalle de facturas
+- **invoice_counters**: Contador secuencial de numeración de facturas por usuario
 
 Ver [ESPECIFICACION_TECNICA.md](./ESPECIFICACION_TECNICA.md) para el esquema completo.
 

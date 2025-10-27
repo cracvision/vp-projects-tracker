@@ -45,7 +45,9 @@ Sistema web para la gestión de proyectos, seguimiento de tareas y registro de t
 - ✅ Sistema de tareas con estimaciones y progreso
 - ✅ Registro diario de trabajo con asociación a tareas
 - ✅ Mejora de notas con IA
-- ✅ Generación de reportes PDF (diario y estado)
+- ✅ Sistema de facturación con numeración automática
+- ✅ Generación de reportes PDF (diario, estado y facturas)
+- ✅ Gestión de estados de factura (Pendiente/Cobrado)
 - ✅ Cálculo automático de progreso
 - ✅ Drag & drop para reordenar tareas
 - ✅ Validación de datos
@@ -110,17 +112,22 @@ proyecto/
 │   │   │   ├── ReportsSection.tsx
 │   │   │   ├── TaskSection.tsx
 │   │   │   └── TaskTable.tsx
+│   │   ├── billing/               # Componentes de facturación
+│   │   │   ├── CreateInvoiceDialog.tsx
+│   │   │   └── InvoiceDetail.tsx
 │   │   └── BrandLogo.tsx
 │   ├── pages/
 │   │   ├── Auth.tsx               # Autenticación
 │   │   ├── Home.tsx               # Lista de proyectos
 │   │   ├── ProjectDetail.tsx      # Detalle de proyecto
+│   │   ├── ProjectBilling.tsx     # Gestión de facturas
 │   │   └── NotFound.tsx
 │   ├── lib/
 │   │   ├── ai.ts                  # Cliente AI
 │   │   ├── brand.ts               # Constantes de marca
 │   │   ├── date.ts                # Utilidades de fecha
 │   │   ├── reports.ts             # Lógica de reportes
+│   │   ├── invoicePdf.ts          # Generación PDF facturas
 │   │   ├── utils.ts               # Utilidades generales
 │   │   └── validation.ts          # Validación de datos
 │   ├── hooks/
@@ -183,16 +190,26 @@ sequenceDiagram
 ```mermaid
 erDiagram
     profiles ||--o{ projects : owns
+    profiles ||--o{ invoice_counters : has
     projects ||--o{ tasks : contains
     projects ||--o{ daily_entries : has
     projects ||--o{ reports : generates
+    projects ||--o{ invoices : billed_in
     tasks ||--o{ daily_entries : tracked_in
+    invoices ||--o{ invoice_items : contains
+    daily_entries ||--o| invoices : billed_in
     
     profiles {
         uuid id PK
         text email
         text full_name
         timestamp created_at
+        timestamp updated_at
+    }
+    
+    invoice_counters {
+        uuid owner_uid PK_FK
+        integer last_number
         timestamp updated_at
     }
     
@@ -227,9 +244,36 @@ erDiagram
         uuid project_id FK
         uuid task_id FK
         uuid author_uid FK
+        uuid invoice_id FK
         date date_iso
         numeric hours
         text notes
+        timestamp created_at
+    }
+    
+    invoices {
+        uuid id PK
+        uuid owner_uid FK
+        uuid project_id FK
+        integer invoice_number
+        date date
+        numeric total_amount
+        text status
+        text notes
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    invoice_items {
+        uuid id PK
+        uuid invoice_id FK
+        uuid daily_entry_id FK
+        text description
+        date entry_date
+        text task_name
+        numeric hours
+        numeric rate
+        numeric amount
         timestamp created_at
     }
     
@@ -359,6 +403,7 @@ erDiagram
 | date_iso | date | No | - | Fecha del trabajo (ISO) |
 | hours | numeric | No | - | Horas trabajadas |
 | notes | text | Sí | - | Notas del trabajo |
+| invoice_id | uuid | Sí | - | FK a invoices (NULL = no facturado) |
 | created_at | timestamptz | Sí | now() | Fecha creación |
 
 **Índices:**
@@ -409,6 +454,98 @@ erDiagram
 
 **RLS Policies:**
 - Políticas similares a otras tablas (basadas en project ownership)
+
+---
+
+#### 3.2.6 invoice_counters
+
+| Campo | Tipo | Nullable | Default | Descripción |
+|-------|------|----------|---------|-------------|
+| owner_uid | uuid | No | - | PK/FK a auth.users |
+| last_number | integer | No | 0 | Último número de factura usado |
+| updated_at | timestamptz | No | now() | Fecha última actualización |
+
+**RLS Policies:**
+1. `Counters: owner can select` (SELECT)
+   - `auth.uid() = owner_uid`
+2. `Counters: owner can update` (UPDATE)
+   - `auth.uid() = owner_uid`
+3. `Counters: owner can insert` (INSERT)
+   - `auth.uid() = owner_uid`
+
+---
+
+#### 3.2.7 invoices
+
+| Campo | Tipo | Nullable | Default | Descripción |
+|-------|------|----------|---------|-------------|
+| id | uuid | No | gen_random_uuid() | PK |
+| owner_uid | uuid | No | - | FK a auth.users |
+| project_id | uuid | No | - | FK a projects |
+| invoice_number | integer | No | - | Número secuencial (auto-asignado) |
+| date | date | No | CURRENT_DATE | Fecha de emisión |
+| total_amount | numeric | No | 0 | Monto total |
+| status | text | No | 'Pendiente' | Estado: Pendiente/Cobrado |
+| notes | text | Sí | - | Notas/condiciones |
+| created_at | timestamptz | No | now() | Fecha creación |
+| updated_at | timestamptz | No | now() | Fecha actualización |
+
+**Índices:**
+- PRIMARY KEY (id)
+- UNIQUE (owner_uid, invoice_number)
+- INDEX ON owner_uid
+- INDEX ON project_id
+- INDEX ON status
+
+**RLS Policies:**
+1. `Invoices: owner select` (SELECT)
+   - `auth.uid() = owner_uid`
+2. `Invoices: owner insert` (INSERT)
+   - `auth.uid() = owner_uid`
+3. `Invoices: owner update` (UPDATE)
+   - `auth.uid() = owner_uid`
+4. `Invoices: owner delete` (DELETE)
+   - `auth.uid() = owner_uid`
+
+**Triggers:**
+- `trg_set_invoice_number` BEFORE INSERT
+  - Asigna automáticamente `invoice_number` usando `next_invoice_number()`
+
+---
+
+#### 3.2.8 invoice_items
+
+| Campo | Tipo | Nullable | Default | Descripción |
+|-------|------|----------|---------|-------------|
+| id | uuid | No | gen_random_uuid() | PK |
+| invoice_id | uuid | No | - | FK a invoices |
+| daily_entry_id | uuid | No | - | FK a daily_entries |
+| description | text | No | - | Descripción de la línea |
+| entry_date | date | No | - | Fecha de la entrada trabajada |
+| task_name | text | Sí | - | Nombre de la tarea |
+| hours | numeric | No | - | Horas facturadas |
+| rate | numeric | No | - | Tarifa por hora |
+| amount | numeric | No | - | Importe (hours * rate) |
+| created_at | timestamptz | No | now() | Fecha creación |
+
+**Índices:**
+- PRIMARY KEY (id)
+- INDEX ON invoice_id
+- INDEX ON daily_entry_id
+
+**RLS Policies:**
+1. `Invoice items: owner select` (SELECT)
+   ```sql
+   EXISTS (
+     SELECT 1 FROM invoices i
+     WHERE i.id = invoice_items.invoice_id
+       AND i.owner_uid = auth.uid()
+   )
+   ```
+2. `Invoice items: owner insert` (INSERT)
+3. `Invoice items: owner delete` (DELETE)
+
+---
 
 ### 3.3 Funciones de Base de Datos
 
@@ -596,6 +733,54 @@ END;
 $function$
 ```
 **Propósito:** Actualizar automáticamente timestamp de modificación.
+
+---
+
+#### 3.3.8 next_invoice_number()
+```sql
+CREATE OR REPLACE FUNCTION public.next_invoice_number(p_owner UUID)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_next INTEGER;
+BEGIN
+  INSERT INTO public.invoice_counters(owner_uid, last_number)
+  VALUES (p_owner, 1)
+  ON CONFLICT (owner_uid)
+  DO UPDATE SET 
+    last_number = public.invoice_counters.last_number + 1,
+    updated_at = NOW()
+  RETURNING last_number INTO v_next;
+
+  RETURN v_next;
+END;
+$$
+```
+**Propósito:** Generar número secuencial de factura por usuario de forma thread-safe.
+
+---
+
+#### 3.3.9 set_invoice_number()
+```sql
+CREATE OR REPLACE FUNCTION public.set_invoice_number()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.invoice_number IS NULL OR NEW.invoice_number <= 0 THEN
+    NEW.invoice_number := public.next_invoice_number(NEW.owner_uid);
+  END IF;
+  NEW.updated_at := NOW();
+  RETURN NEW;
+END;
+$$
+```
+**Propósito:** Trigger que asigna automáticamente el número de factura antes del INSERT.
 
 ---
 
@@ -956,6 +1141,158 @@ $function$
 
 ---
 
+### 4.7 Sistema de Facturación
+
+#### 4.7.1 Crear Factura
+- **Ruta:** `/project/:projectId/billing`
+- **Componente:** `CreateInvoiceDialog.tsx`
+- **Proceso:**
+  1. **Cargar Entradas No Facturadas:**
+     ```typescript
+     supabase
+       .from('daily_entries')
+       .select('id, date_iso, hours, notes, task_id, tasks(name)')
+       .eq('project_id', projectId)
+       .is('invoice_id', null)
+       .order('date_iso', { ascending: true })
+     ```
+  2. **Selección de Entradas:**
+     - UI con checkboxes para cada entrada
+     - Filtros por rango de fechas
+     - Botón "Seleccionar todas"
+     - Cálculo en tiempo real: total horas, tarifa, importe
+  
+  3. **Creación de Factura:**
+     ```typescript
+     // Paso 1: Crear factura (invoice_number asignado por trigger)
+     const { data: invoice } = await supabase
+       .from('invoices')
+       .insert({
+         owner_uid: user.id,
+         project_id: projectId,
+         status: 'Pendiente',
+         date: selectedDate || new Date().toISOString().slice(0,10),
+         total_amount: 0,
+         notes: invoiceNotes
+       })
+       .select()
+       .single();
+     
+     // Paso 2: Crear líneas de factura
+     const items = selectedEntries.map(entry => ({
+       invoice_id: invoice.id,
+       daily_entry_id: entry.id,
+       description: `[${entry.date_iso}] ${entry.tasks?.name || 'Trabajo'} — ${entry.notes?.slice(0,140)}`,
+       entry_date: entry.date_iso,
+       task_name: entry.tasks?.name || null,
+       hours: entry.hours,
+       rate: project.hourly_rate,
+       amount: entry.hours * project.hourly_rate
+     }));
+     
+     await supabase.from('invoice_items').insert(items);
+     
+     // Paso 3: Marcar entradas como facturadas
+     await supabase
+       .from('daily_entries')
+       .update({ invoice_id: invoice.id })
+       .in('id', selectedEntries.map(e => e.id));
+     
+     // Paso 4: Actualizar total
+     await supabase
+       .from('invoices')
+       .update({ total_amount: totalAmount })
+       .eq('id', invoice.id);
+     ```
+
+#### 4.7.2 Listar Facturas
+- **Componente:** `ProjectBilling.tsx`
+- **Query:**
+  ```typescript
+  supabase
+    .from('invoices')
+    .select('id, invoice_number, date, total_amount, status')
+    .eq('project_id', projectId)
+    .order('date', { ascending: false })
+  ```
+- **UI:** Tabla con:
+  - Número de factura
+  - Fecha de emisión
+  - Monto total
+  - Estado (Badge: Pendiente/Cobrado)
+  - Acciones: Ver detalle
+
+#### 4.7.3 Ver Detalle de Factura
+- **Componente:** `InvoiceDetail.tsx`
+- **Queries:**
+  ```typescript
+  // Factura con datos relacionados
+  const { data: invoice } = await supabase
+    .from('invoices')
+    .select('*, projects(name), profiles:owner_uid(full_name)')
+    .eq('id', invoiceId)
+    .single();
+  
+  // Líneas de factura
+  const { data: items } = await supabase
+    .from('invoice_items')
+    .select('*')
+    .eq('invoice_id', invoiceId)
+    .order('entry_date', { ascending: true });
+  ```
+- **Funcionalidades:**
+  - Visualización completa de la factura
+  - Botón "Descargar PDF"
+  - Cambio de estado (Pendiente ↔ Cobrado)
+  - Tabla de líneas con descripción, fecha, horas, tarifa, importe
+
+#### 4.7.4 Generación de PDF de Factura
+- **Archivo:** `src/lib/invoicePdf.ts`
+- **Función:** `downloadInvoicePDF(params)`
+- **Características:**
+  - Logo de la empresa
+  - Información del proyecto y emisor
+  - Tabla de líneas con detalles de cada entrada
+  - Total calculado
+  - Notas/condiciones de pago
+  - Formato profesional con html2pdf.js
+- **Configuración:**
+  ```typescript
+  html2pdf().set({
+    margin: 10,
+    filename: `Factura-${invoiceNumber}.pdf`,
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  })
+  ```
+
+#### 4.7.5 Gestión de Estados
+- **Estados Disponibles:**
+  - `Pendiente`: Factura creada, pago pendiente
+  - `Cobrado`: Factura pagada
+- **Actualización:**
+  ```typescript
+  await supabase
+    .from('invoices')
+    .update({ status: newStatus, updated_at: new Date().toISOString() })
+    .eq('id', invoiceId);
+  ```
+
+#### 4.7.6 Validaciones y Reglas de Negocio
+1. **No permitir facturar entradas ya facturadas**
+   - Filtro: `invoice_id IS NULL`
+2. **Numeración secuencial automática**
+   - Garantizada por trigger + función transaccional
+3. **Integridad referencial**
+   - No se pueden eliminar entradas diarias facturadas (FK con RESTRICT)
+   - Si se elimina factura (solo Pendientes), restaurar `invoice_id = NULL` en entradas
+4. **Cálculo de totales**
+   - Siempre basado en: `SUM(hours * rate)` de las líneas
+5. **Proyecto correcto**
+   - Solo entradas del mismo proyecto pueden facturarse juntas
+
+---
+
 ## 5. Componentes de la Interfaz
 
 ### 5.1 Componentes de UI (shadcn/ui)
@@ -1070,6 +1407,110 @@ Todos los componentes UI base están ubicados en `src/components/ui/` y son pers
   - Formulario pre-rellenado
   - Permite cambiar tarea, horas, notas
   - Update en Supabase
+
+#### 5.3.9 ReportsSection
+- **Props:** `{ projectId: string, projectName: string }`
+- **Ubicación:** `src/components/project-detail/ReportsSection.tsx`
+- **Funcionalidad:**
+  - Botones para generar reportes diarios y de estado
+  - Integración con `lib/reports.ts`
+  - Descarga de PDFs
+
+#### 5.3.10 EditDueDate
+- **Props:** `{ project: Project, onUpdate: () => void }`
+- **Ubicación:** `src/components/project-detail/EditDueDate.tsx`
+- **Funcionalidad:**
+  - Dialog para editar fecha de entrega
+  - Calendar picker
+  - Actualización en base de datos
+
+### 5.4 Componentes de Facturación
+
+#### 5.4.1 CreateInvoiceDialog
+- **Props:** `{ open: boolean, onOpenChange: (open: boolean) => void, project: Project, onCreated: () => void }`
+- **Ubicación:** `src/components/billing/CreateInvoiceDialog.tsx`
+- **Funcionalidad:**
+  - Carga entradas no facturadas del proyecto
+  - Filtros por rango de fechas
+  - Selección múltiple con checkboxes
+  - Cálculo automático de totales
+  - Campo para notas/condiciones
+  - Creación de factura con líneas de detalle
+  - Marcado de entradas como facturadas
+  - Toast de confirmación con número de factura
+
+**Estados:**
+```typescript
+const [entries, setEntries] = useState<DailyEntry[]>([]);
+const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+const [loading, setLoading] = useState(false);
+const [creating, setCreating] = useState(false);
+const [invoiceDate, setInvoiceDate] = useState(new Date());
+const [notes, setNotes] = useState('');
+const [dateFrom, setDateFrom] = useState<Date | undefined>();
+const [dateTo, setDateTo] = useState<Date | undefined>();
+```
+
+**Cálculos:**
+```typescript
+const totalHours = selectedEntries.reduce((sum, e) => sum + Number(e.hours), 0);
+const totalAmount = totalHours * Number(project.hourly_rate ?? 65);
+```
+
+#### 5.4.2 InvoiceDetail
+- **Props:** `{ invoiceId: string, open: boolean, onOpenChange: (open: boolean) => void, onUpdate: () => void }`
+- **Ubicación:** `src/components/billing/InvoiceDetail.tsx`
+- **Funcionalidad:**
+  - Visualización completa de factura
+  - Información del proyecto y emisor
+  - Tabla de líneas con detalles
+  - Total calculado
+  - Botón para descargar PDF
+  - Select para cambiar estado (Pendiente/Cobrado)
+  - Sheet/Drawer para mejor UX móvil
+
+**Query de datos:**
+```typescript
+const { data: invoice } = await supabase
+  .from('invoices')
+  .select('*, projects(name), profiles:owner_uid(full_name)')
+  .eq('id', invoiceId)
+  .single();
+
+const { data: items } = await supabase
+  .from('invoice_items')
+  .select('*')
+  .eq('invoice_id', invoiceId)
+  .order('entry_date', { ascending: true });
+```
+
+**Acciones:**
+- `handleDownloadPDF()`: Llama a `downloadInvoicePDF()` con datos formateados
+- `handleStatusChange()`: Actualiza estado en base de datos
+
+### 5.5 Páginas
+
+#### 5.5.1 ProjectBilling
+- **Ruta:** `/project/:projectId/billing`
+- **Ubicación:** `src/pages/ProjectBilling.tsx`
+- **Funcionalidad:**
+  - Vista de facturación por proyecto
+  - Botón "Crear Factura" → abre `CreateInvoiceDialog`
+  - Tabla de facturas existentes:
+    - Columnas: #, Fecha, Total, Estado, Acciones
+    - Badge para estado (Pendiente/Cobrado)
+    - Botón "Ver" → abre `InvoiceDetail`
+  - Botón "Volver al Proyecto"
+  - Refresh automático después de crear/actualizar facturas
+
+**Estados:**
+```typescript
+const [project, setProject] = useState<Project | null>(null);
+const [invoices, setInvoices] = useState<Invoice[]>([]);
+const [loading, setLoading] = useState(true);
+const [showCreate, setShowCreate] = useState(false);
+const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+```
 
 #### 5.3.9 ReportsSection
 - **Props:** `{ project: Project }`
