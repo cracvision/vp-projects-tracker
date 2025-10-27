@@ -21,6 +21,7 @@ export type Database = {
           date_iso: string
           hours: number
           id: string
+          invoice_id: string | null
           notes: string | null
           project_id: string
           task_id: string | null
@@ -31,6 +32,7 @@ export type Database = {
           date_iso: string
           hours: number
           id?: string
+          invoice_id?: string | null
           notes?: string | null
           project_id: string
           task_id?: string | null
@@ -41,11 +43,19 @@ export type Database = {
           date_iso?: string
           hours?: number
           id?: string
+          invoice_id?: string | null
           notes?: string | null
           project_id?: string
           task_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "daily_entries_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "daily_entries_project_id_fkey"
             columns: ["project_id"]
@@ -58,6 +68,125 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_counters: {
+        Row: {
+          last_number: number
+          owner_uid: string
+          updated_at: string
+        }
+        Insert: {
+          last_number?: number
+          owner_uid: string
+          updated_at?: string
+        }
+        Update: {
+          last_number?: number
+          owner_uid?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      invoice_items: {
+        Row: {
+          amount: number
+          created_at: string
+          daily_entry_id: string
+          description: string
+          entry_date: string
+          hours: number
+          id: string
+          invoice_id: string
+          rate: number
+          task_name: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          daily_entry_id: string
+          description: string
+          entry_date: string
+          hours: number
+          id?: string
+          invoice_id: string
+          rate: number
+          task_name?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          daily_entry_id?: string
+          description?: string
+          entry_date?: string
+          hours?: number
+          id?: string
+          invoice_id?: string
+          rate?: number
+          task_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_daily_entry_id_fkey"
+            columns: ["daily_entry_id"]
+            isOneToOne: false
+            referencedRelation: "daily_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          invoice_number: number
+          notes: string | null
+          owner_uid: string
+          project_id: string
+          status: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          invoice_number: number
+          notes?: string | null
+          owner_uid: string
+          project_id: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          invoice_number?: number
+          notes?: string | null
+          owner_uid?: string
+          project_id?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -215,7 +344,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      next_invoice_number: { Args: { p_owner: string }; Returns: number }
     }
     Enums: {
       [_ in never]: never
