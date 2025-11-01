@@ -26,26 +26,48 @@ const ProjectSummary = ({ project, refreshKey, onProjectUpdated }: ProjectSummar
 
   useEffect(() => {
     fetchMetrics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id, refreshKey]);
 
   const fetchMetrics = async () => {
     try {
-      const { data: tasks } = await supabase
-        .from("tasks")
-        .select("actual_hours, estimated_hours_max")
-        .eq("project_id", project.id);
+      // Paraleliza: tareas (para progreso) + todas las entradas (para horas/budget)
+      const [tasksRes, entriesRes] = await Promise.all([
+        supabase
+          .from("tasks")
+          .select("actual_hours, estimated_hours_max")
+          .eq("project_id", project.id),
+        supabase
+          .from("daily_entries")
+          .select("hours")
+          .eq("project_id", project.id),
+      ]);
 
-      if (tasks) {
-        const totalActual = tasks.reduce((sum, task) => sum + (task.actual_hours || 0), 0);
-        const totalEstimated = tasks.reduce((sum, task) => sum + (task.estimated_hours_max || 0), 0);
-        const progress = totalEstimated > 0 ? Math.min(100, Math.round((totalActual / totalEstimated) * 100)) : 0;
+      const tasks = tasksRes.data ?? [];
+      const entries = entriesRes.data ?? [];
 
-        setMetrics({
-          hoursWorked: totalActual,
-          budgetUsed: totalActual * project.hourly_rate,
-          progress,
-        });
-      }
+      // 1) Horas totales trabajadas (incluye entradas sin tarea)
+      const totalHours = entries.reduce((sum: number, e: any) => sum + (Number(e.hours) || 0), 0);
+
+      // 2) Progreso = (suma actual_hours de tareas) / (suma estimado max)
+      const totalActualByTasks = tasks.reduce(
+        (sum: number, t: any) => sum + (Number(t.actual_hours) || 0),
+        0
+      );
+      const totalEstimated = tasks.reduce(
+        (sum: number, t: any) => sum + (Number(t.estimated_hours_max) || 0),
+        0
+      );
+      const progress =
+        totalEstimated > 0
+          ? Math.min(100, Math.round((totalActualByTasks / totalEstimated) * 100))
+          : 0;
+
+      setMetrics({
+        hoursWorked: totalHours,
+        budgetUsed: totalHours * (Number(project.hourly_rate) || 0),
+        progress,
+      });
     } catch (error) {
       console.error("Error fetching metrics:", error);
     }

@@ -9,7 +9,6 @@ import html2pdf from "html2pdf.js";
 import DOMPurify from "dompurify";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { generateWithAI } from "@/lib/ai";
 import { ymdToLocalDate } from "@/lib/date";
 import { wrapPdfHtml, fmt, fmtTime, fmtStamp } from "@/lib/reports";
 
@@ -68,7 +67,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         })
         .from(html)
         .save(`reporte-diario-${project.name}-${date}.pdf`);
-      
+
       toast({
         title: "Reporte generado",
         description: "El reporte diario se ha descargado correctamente",
@@ -80,7 +79,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
 
   async function generateStatus() {
     try {
-      // 1) Traer tareas
+      // 1) Traer tareas (para progreso y tabla)
       const { data: tasks, error: tErr } = await supabase
         .from("tasks")
         .select("id, name, description, estimated_hours_min, estimated_hours_max, actual_hours, progress")
@@ -89,7 +88,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         .order("created_at", { ascending: true });
       if (tErr) throw tErr;
 
-      // 2) Traer TODAS las entradas
+      // 2) Traer TODAS las entradas (para totales reales)
       const { data: entries, error: eErr } = await supabase
         .from("daily_entries")
         .select("task_id, date_iso, hours, notes, created_at, tasks(name)")
@@ -99,7 +98,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
       if (eErr) throw eErr;
 
       // 3) Totales y progreso general
-      const totals = (tasks || []).reduce(
+      const totalsFromTasks = (tasks || []).reduce(
         (acc: any, t: any) => {
           acc.actual += t.actual_hours || 0;
           acc.estMax += t.estimated_hours_max || 0;
@@ -107,21 +106,28 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         },
         { actual: 0, estMax: 0 }
       );
-      const overall = totals.estMax > 0 ? Math.min(100, Math.round((totals.actual / totals.estMax) * 100)) : 0;
+      const overall =
+        totalsFromTasks.estMax > 0
+          ? Math.min(100, Math.round((totalsFromTasks.actual / totalsFromTasks.estMax) * 100))
+          : 0;
 
-      // 4) Agrupar entradas por tarea (incluye "Sin asignar")
+      // 4) Totales desde entradas (incluye sin asignar)
+      const totalWorked = (entries || []).reduce((s, e) => s + (e.hours || 0), 0);
+
+      // 5) Agrupar entradas por tarea (incluye "Sin asignar")
       const byTask: Record<string, any[]> = {};
       (entries || []).forEach((e) => {
         const key = e.task_id || "unassigned";
         if (!byTask[key]) byTask[key] = [];
         byTask[key].push(e);
       });
+      const unassignedHours = (byTask["unassigned"] || []).reduce((s, e) => s + (e.hours || 0), 0);
 
-      // 5) Sección resumen + tabla
+      // 6) Sección resumen + tabla
       const summaryHtml = `
-        <div class="kpi">Progreso general: ${overall}%</div>
-        <div class="kpi">Horas reales: ${totals.actual.toFixed(1)}h</div>
-        <div class="kpi">Estimado total (max): ${totals.estMax.toFixed(1)}h</div>
+        <div class="kpi">Horas totales trabajadas: ${totalWorked.toFixed(1)}h</div>
+        ${unassignedHours > 0 ? `<div class="muted">Incluye "Sin asignar": ${unassignedHours.toFixed(1)}h</div>` : ""}
+        <div class="kpi" style="margin-top:6px;">Progreso general (sobre tareas estimadas): ${overall}%</div>
         <div class="hr"></div>
         <h2>Detalle por tarea</h2>
         <table>
@@ -134,19 +140,33 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
             </tr>
           </thead>
           <tbody>
-            ${(tasks || []).map((t: any) => `
+            ${(tasks || [])
+              .map(
+                (t: any) => `
               <tr>
                 <td>${t.name}</td>
                 <td>${t.estimated_hours_max ?? "-"}</td>
                 <td>${(t.actual_hours ?? 0).toFixed(1)}</td>
                 <td>${t.progress ?? 0}%</td>
-              </tr>
-            `).join("")}
+              </tr>`
+              )
+              .join("")}
+            ${
+              unassignedHours > 0
+                ? `
+              <tr>
+                <td>Sin asignar</td>
+                <td>-</td>
+                <td>${unassignedHours.toFixed(1)}</td>
+                <td>-</td>
+              </tr>`
+                : ""
+            }
           </tbody>
         </table>
       `;
 
-      // 6) Bitácora completa por tarea
+      // 7) Bitácora completa por tarea (incluye "Sin asignar")
       const tasksWithUnassigned = [
         ...(tasks || []),
         { id: "unassigned", name: "Sin asignar", description: null, estimated_hours_max: null, actual_hours: null, progress: null },
@@ -156,30 +176,37 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         <div class="hr"></div>
         <h2>Bitácora por tarea</h2>
         <div style="margin-top:8px;">
-          ${tasksWithUnassigned.map((t: any) => {
-            const list = byTask[t.id] || [];
-            if (list.length === 0) return `
-              <div style="margin:12px 0;">
-                <h3>${t.name}</h3>
-                <div class="muted">Sin entradas registradas.</div>
-              </div>
-            `;
-            return `
-              <div style="margin:12px 0;">
-                <h3>${t.name}</h3>
-                ${t.description ? `<div class="muted" style="margin-bottom:6px;">${DOMPurify.sanitize(t.description)}</div>` : ""}
-                ${list.map((e: any) => `
-                  <div class="entry">
-                    <div style="display:flex; justify-content:space-between; gap:8px;">
-                      <div>${fmtStamp(e.date_iso || e.created_at)}</div>
-                      <div><strong>${e.hours}h</strong></div>
-                    </div>
-                    ${e.notes ? `<div class="pre" style="margin-top:6px;">${DOMPurify.sanitize(e.notes)}</div>` : `<em class="muted">Sin notas</em>`}
+          ${tasksWithUnassigned
+            .map((t: any) => {
+              const list = byTask[t.id] || [];
+              if (list.length === 0)
+                return `
+                  <div style="margin:12px 0;">
+                    <h3>${t.name}</h3>
+                    <div class="muted">Sin entradas registradas.</div>
                   </div>
-                `).join("")}
-              </div>
-            `;
-          }).join("")}
+                `;
+              return `
+                <div style="margin:12px 0;">
+                  <h3>${t.name}</h3>
+                  ${t.description ? `<div class="muted" style="margin-bottom:6px;">${DOMPurify.sanitize(t.description)}</div>` : ""}
+                  ${list
+                    .map(
+                      (e: any) => `
+                      <div class="entry">
+                        <div style="display:flex; justify-content:space-between; gap:8px;">
+                          <div>${fmtStamp(e.date_iso || e.created_at)}</div>
+                          <div><strong>${e.hours}h</strong></div>
+                        </div>
+                        ${e.notes ? `<div class="pre" style="margin-top:6px;">${DOMPurify.sanitize(e.notes)}</div>` : `<em class="muted">Sin notas</em>`}
+                      </div>
+                    `
+                    )
+                    .join("")}
+                </div>
+              `;
+            })
+            .join("")}
         </div>
       `;
 
@@ -198,7 +225,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         })
         .from(html)
         .save(`reporte-estado-${project.name}.pdf`);
-      
+
       toast({
         title: "Reporte generado",
         description: "El reporte de estado se ha descargado correctamente",
@@ -218,7 +245,12 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-4 items-end">
           <div>
             <label className="text-sm text-muted-foreground">Fecha del reporte diario</label>
-            <Input type="date" value={date} max={format(new Date(), "yyyy-MM-dd")} onChange={(e) => setDate(e.target.value)} />
+            <Input
+              type="date"
+              value={date}
+              max={format(new Date(), "yyyy-MM-dd")}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
           <Button variant="outline" className="h-10" onClick={generateDaily}>
             <Calendar className="h-5 w-5 mr-2" /> Reporte Diario
