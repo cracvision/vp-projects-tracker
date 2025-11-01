@@ -10,41 +10,43 @@ export async function wrapPdfHtml(opts: {
 }) {
   const logo = await fetchAsDataUrl(BRAND_LOGO_URL);
 
-  // A4 @ 96dpi ≈ 794px → fijamos ancho para que html2pdf calcule cortes estables
+  // A4 = 210mm ≈ 794px @96dpi. Área útil = 210mm - (2 * 10mm márgenes) = 190mm ≈ 718px
   return `
   <div id="pdf-root" class="pdf-root">
     <style>
       * { box-sizing: border-box; }
-      .pdf-root { width: 794px; margin: 0 auto; font-family: Inter, system-ui, -apple-system, Segoe UI; color:#111; padding:24px; }
+      .pdf-root {
+        width: 718px;              /* ANCHO INTERNO A4 */
+        margin: 0 auto;
+        padding: 16px;             /* incluido en width por box-sizing */
+        font-family: Inter, system-ui, -apple-system, Segoe UI;
+        color:#111;
+      }
       h1,h2,h3 { margin: 0 0 8px 0; }
       .muted { color:#666; }
       .hr { height:1px; background:#e5e7eb; margin:16px 0; }
       .card { border:1px solid #eee; border-radius:10px; padding:12px; }
-      table { width:100%; border-collapse: collapse; }
-      th, td { padding:10px; border-bottom:1px solid #f1f5f9; font-size:14px; vertical-align: top; }
-      th { text-align:left; font-weight:600; color:#334155; background:#f8fafc; }
-      .entry { margin:10px 0; padding:10px; border:1px solid #f1f5f9; border-radius:8px; }
-      .pre { white-space: pre-wrap; line-height:1.4; color:#374151; }
-      .kpi { font-weight:600; }
       .header { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
       .logo { height:28px; }
+
+      /* Tablas y listas no deben empujar ancho ni cortarse raro */
+      table { width:100%; border-collapse: collapse; table-layout: fixed; }
+      th, td {
+        padding:10px; border-bottom:1px solid #f1f5f9; font-size:14px; vertical-align: top;
+        word-break: break-word; overflow-wrap: anywhere;
+      }
+      th { text-align:left; font-weight:600; color:#334155; background:#f8fafc; }
+
+      .entry { margin:10px 0; padding:10px; border:1px solid #f1f5f9; border-radius:8px; }
+      .pre { white-space: pre-wrap; line-height:1.4; color:#374151; word-break: break-word; overflow-wrap:anywhere; }
       ul, ol { padding-left: 18px; }
 
-      /* --- Reglas de paginación para evitar "cortes mordidos" --- */
+      /* Evitar "cortes mordidos" entre páginas */
       .section, .entry, table, thead, tbody, tr, td, th, h2, h3, .header, .kpi, ul, ol, li {
-        break-inside: avoid;
-        page-break-inside: avoid;
+        break-inside: avoid; page-break-inside: avoid;
       }
-      .page-break {
-        page-break-before: always;
-        break-before: page;
-      }
-      @media print {
-        .page-break {
-          page-break-before: always;
-          break-before: page;
-        }
-      }
+      .page-break { page-break-before: always; break-before: page; }
+      @media print { .page-break { page-break-before: always; break-before: page; } }
     </style>
 
     <div class="header">
