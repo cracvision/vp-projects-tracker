@@ -166,7 +166,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         </table>
       `;
 
-      // 7) Bitácora completa por tarea (incluye "Sin asignar")
+      // 7) Bitácora completa por tarea (con salto de página limpio)
       const tasksWithUnassigned = [
         ...(tasks || []),
         { id: "unassigned", name: "Sin asignar", description: null, estimated_hours_max: null, actual_hours: null, progress: null },
@@ -174,8 +174,9 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
 
       const journalHtml = `
         <div class="hr"></div>
+        <div class="page-break"></div>
         <h2>Bitácora por tarea</h2>
-        <div style="margin-top:8px;">
+        <div class="section" style="margin-top:8px;">
           ${tasksWithUnassigned
             .map((t: any) => {
               const list = byTask[t.id] || [];
@@ -219,10 +220,14 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
       await html2pdf()
         .set({
           margin: 10,
+          pagebreak: {
+            mode: ['css', 'legacy'],
+            avoid: ['.entry', 'table', 'tr', 'td', 'th', 'h2', 'h3', 'ul', 'ol', 'li']
+          },
           image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
-        })
+          html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, windowWidth: 1200 },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        } as any)
         .from(html)
         .save(`reporte-estado-${project.name}.pdf`);
 
