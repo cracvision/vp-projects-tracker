@@ -196,7 +196,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
                       (e: any) => `
                       <div class="entry">
                         <div style="display:flex; justify-content:space-between; gap:8px;">
-                          <div>${fmtStamp(e.date_iso || e.created_at)}</div>
+                          <div>${fmtStamp(e.created_at)}</div>
                           <div><strong>${e.hours}h</strong></div>
                         </div>
                         ${e.notes ? `<div class="pre" style="margin-top:6px;">${DOMPurify.sanitize(e.notes)}</div>` : `<em class="muted">Sin notas</em>`}
