@@ -58,6 +58,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         body,
       });
 
+      const timestamp = format(new Date(), "yyyy-MM-dd_HHmm");
       await html2pdf()
         .set({
           margin: 10,
@@ -66,7 +67,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
           jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
         })
         .from(html)
-        .save(`reporte-diario-${project.name}-${date}.pdf`);
+        .save(`reporte-diario-${project.name}-${date}-${timestamp}.pdf`);
 
       toast({
         title: "Reporte generado",
@@ -211,6 +212,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         </div>
       `;
 
+      const timestamp = format(new Date(), "yyyy-MM-dd_HHmm");
       const html = await wrapPdfHtml({
         title: `Reporte de Estado — ${project.name}`,
         subtitle: format(new Date(), "PPPp", { locale: es }),
@@ -229,7 +231,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
         } as any)
         .from(html)
-        .save(`reporte-estado-${project.name}.pdf`);
+        .save(`reporte-estado-${project.name}-${timestamp}.pdf`);
 
       toast({
         title: "Reporte generado",
