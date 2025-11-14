@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { ymdToLocalDate } from "@/lib/date";
 
 export async function wrapPdfHtml(opts: {
   title: string;
@@ -74,8 +75,10 @@ export async function wrapPdfHtml(opts: {
   `;
 }
 
-export const fmt = (d: string | Date) =>
-  format(new Date(d), "EEEE, d 'de' MMMM yyyy", { locale: es });
+export const fmt = (d: string | Date) => {
+  const date = typeof d === 'string' ? ymdToLocalDate(d) : d;
+  return format(date, "EEEE, d 'de' MMMM yyyy", { locale: es });
+};
 
 export const fmtTime = (d: string | Date) =>
   format(new Date(d), "HH:mm", { locale: es });
