@@ -2,7 +2,7 @@
  * Input validation and sanitization utilities
  */
 
-export function sanitizeText(input: string, maxLength = 1000): string {
+export function sanitizeText(input: string, maxLength = 10000): string {
   // Remove HTML tags and trim whitespace
   const sanitized = input.replace(/<[^>]*>?/gm, "").trim();
   

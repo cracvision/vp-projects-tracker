@@ -197,7 +197,7 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
                       (e: any) => `
                       <div class="entry">
                         <div style="display:flex; justify-content:space-between; gap:8px;">
-                          <div>${fmtStamp(e.created_at)}</div>
+                          <div>${fmt(e.date_iso)}</div>
                           <div><strong>${e.hours}h</strong></div>
                         </div>
                         ${e.notes ? `<div class="pre" style="margin-top:6px;">${DOMPurify.sanitize(e.notes)}</div>` : `<em class="muted">Sin notas</em>`}
@@ -224,10 +224,10 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
           margin: 10,
           pagebreak: {
             mode: ['css', 'legacy'],
-            avoid: ['.entry', 'table', 'tr', 'td', 'th', 'h2', 'h3', 'ul', 'ol', 'li']
+            avoid: ['table', 'tr', 'td', 'th', 'h2', 'h3', 'ul', 'ol', 'li']
           },
           image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, windowWidth: 730 },
+          html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, windowWidth: 718 },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
         } as any)
         .from(html)
