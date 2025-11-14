@@ -10,7 +10,7 @@ import DOMPurify from "dompurify";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ymdToLocalDate } from "@/lib/date";
-import { wrapPdfHtml, fmt, fmtTime, fmtStamp } from "@/lib/reports";
+import { wrapPdfHtml, fmt, fmtTime, fmtStamp, generateStatusPdfDirect } from "@/lib/reports";
 
 interface ReportsSectionProps {
   project: {
@@ -89,13 +89,12 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         .order("created_at", { ascending: true });
       if (tErr) throw tErr;
 
-      // 2) Traer TODAS las entradas (para totales reales)
+      // 2) Traer TODAS las entradas ordenadas cronológicamente
       const { data: entries, error: eErr } = await supabase
         .from("daily_entries")
         .select("task_id, date_iso, hours, notes, created_at, tasks(name)")
         .eq("project_id", project.id)
-        .order("date_iso", { ascending: true })
-        .order("created_at", { ascending: true });
+        .order("date_iso", { ascending: true });
       if (eErr) throw eErr;
 
       // 3) Totales y progreso general
@@ -115,123 +114,23 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
       // 4) Totales desde entradas (incluye sin asignar)
       const totalWorked = (entries || []).reduce((s, e) => s + (e.hours || 0), 0);
 
-      // 5) Agrupar entradas por tarea (incluye "Sin asignar")
-      const byTask: Record<string, any[]> = {};
-      (entries || []).forEach((e) => {
-        const key = e.task_id || "unassigned";
-        if (!byTask[key]) byTask[key] = [];
-        byTask[key].push(e);
-      });
-      const unassignedHours = (byTask["unassigned"] || []).reduce((s, e) => s + (e.hours || 0), 0);
-
-      // 6) Sección resumen + tabla
-      const summaryHtml = `
-        <div class="kpi">Horas totales trabajadas: ${totalWorked.toFixed(1)}h</div>
-        ${unassignedHours > 0 ? `<div class="muted">Incluye "Sin asignar": ${unassignedHours.toFixed(1)}h</div>` : ""}
-        <div class="kpi" style="margin-top:6px;">Progreso general (sobre tareas estimadas): ${overall}%</div>
-        <div class="hr"></div>
-        <h2>Detalle por tarea</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Tarea</th>
-              <th>Est. (max)</th>
-              <th>Horas reales</th>
-              <th>Progreso</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${(tasks || [])
-              .map(
-                (t: any) => `
-              <tr>
-                <td>${t.name}</td>
-                <td>${t.estimated_hours_max ?? "-"}</td>
-                <td>${(t.actual_hours ?? 0).toFixed(1)}</td>
-                <td>${t.progress ?? 0}%</td>
-              </tr>`
-              )
-              .join("")}
-            ${
-              unassignedHours > 0
-                ? `
-              <tr>
-                <td>Sin asignar</td>
-                <td>-</td>
-                <td>${unassignedHours.toFixed(1)}</td>
-                <td>-</td>
-              </tr>`
-                : ""
-            }
-          </tbody>
-        </table>
-      `;
-
-      // 7) Bitácora completa por tarea (con salto de página limpio)
-      const tasksWithUnassigned = [
-        ...(tasks || []),
-        { id: "unassigned", name: "Sin asignar", description: null, estimated_hours_max: null, actual_hours: null, progress: null },
-      ];
-
-      const journalHtml = `
-        <div class="hr"></div>
-        <div class="page-break"></div>
-        <h2>Bitácora por tarea</h2>
-        <div class="section" style="margin-top:8px;">
-          ${tasksWithUnassigned
-            .map((t: any) => {
-              const list = byTask[t.id] || [];
-              if (list.length === 0)
-                return `
-                  <div style="margin:12px 0;">
-                    <h3>${t.name}</h3>
-                    <div class="muted">Sin entradas registradas.</div>
-                  </div>
-                `;
-              return `
-                <div style="margin:12px 0;">
-                  <h3>${t.name}</h3>
-                  ${t.description ? `<div class="muted" style="margin-bottom:6px;">${DOMPurify.sanitize(t.description)}</div>` : ""}
-                  ${list
-                    .map(
-                      (e: any) => `
-                      <div class="entry">
-                        <div style="display:flex; justify-content:space-between; gap:8px;">
-                          <div>${fmt(e.date_iso)}</div>
-                          <div><strong>${e.hours}h</strong></div>
-                        </div>
-                        ${e.notes ? `<div class="pre" style="margin-top:6px;">${DOMPurify.sanitize(e.notes)}</div>` : `<em class="muted">Sin notas</em>`}
-                      </div>
-                    `
-                    )
-                    .join("")}
-                </div>
-              `;
-            })
-            .join("")}
-        </div>
-      `;
+      // 5) Calcular horas sin asignar
+      const unassignedHours = (entries || [])
+        .filter(e => !e.task_id)
+        .reduce((s, e) => s + (e.hours || 0), 0);
 
       const timestamp = format(new Date(), "yyyy-MM-dd_HHmm");
-      const html = await wrapPdfHtml({
-        title: `Reporte de Estado — ${project.name}`,
-        subtitle: format(new Date(), "PPPp", { locale: es }),
-        body: summaryHtml + journalHtml,
-      });
 
-      await html2pdf()
-        .set({
-          margin: 10,
-          pagebreak: {
-            mode: ['css', 'legacy'],
-            avoid: ['table', 'tr', 'td', 'th', 'h2', 'h3', 'ul', 'ol', 'li']
-          },
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, windowWidth: 718 },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        } as any)
-        .from(html)
-        .save(`reporte-estado-${project.name}-${timestamp}.pdf`);
+      // Generar PDF usando jsPDF directamente
+      await generateStatusPdfDirect({
+        projectName: project.name,
+        tasks: tasks || [],
+        entries: entries || [],
+        totalWorked,
+        unassignedHours,
+        overallProgress: overall,
+        timestamp,
+      });
 
       toast({
         title: "Reporte generado",
