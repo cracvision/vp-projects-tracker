@@ -16,7 +16,6 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import DailyEntriesList from "./DailyEntriesList";
 import { sanitizeText, validateNumber } from "@/lib/validation";
-import { generateWithAI } from "@/lib/ai";
 
 interface DailyWorkLogProps {
   projectId: string;
@@ -39,7 +38,6 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
   });
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [improving, setImproving] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -165,48 +163,6 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
                 placeholder="Describe lo que hiciste hoy..."
                 rows={4}
               />
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={improving || !formData.notes.trim()}
-                  onClick={async () => {
-                    const input = formData.notes.trim();
-                    if (!input) return;
-                    setImproving(true);
-                    try {
-                      const improved = await generateWithAI(
-                        `Reescribe profesionalmente estas notas de avance. Mantén el contenido, corrige errores, ordena ideas y presenta un formato fácil de leer. Devuelve solo el texto final mejorado:\n\n${input}`
-                      );
-                      if (improved) {
-                        setFormData((s) => ({ ...s, notes: improved }));
-                        toast({
-                          title: "Nota mejorada",
-                          description: "La IA ha mejorado tu nota",
-                        });
-                      } else {
-                        toast({
-                          title: "Error",
-                          description: "No se pudo mejorar la nota con IA",
-                          variant: "destructive",
-                        });
-                      }
-                    } catch (error) {
-                      console.error("Error al mejorar con IA:", error);
-                      toast({
-                        title: "Error",
-                        description: error instanceof Error ? error.message : "Ocurrió un error al mejorar la nota",
-                        variant: "destructive",
-                      });
-                    } finally {
-                      setImproving(false);
-                    }
-                  }}
-                >
-                  {improving ? "Mejorando…" : "Mejorar con AI"}
-                </Button>
-              </div>
             </div>
 
             <Button type="submit" disabled={loading} className="w-full">
