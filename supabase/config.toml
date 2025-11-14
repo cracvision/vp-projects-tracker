@@ -1,4 +1,1 @@
 project_id = "xuswnjywcxredtmgfbzp"
-
-[functions.improve-notes]
-verify_jwt = false
