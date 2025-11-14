@@ -42,8 +42,20 @@ export async function wrapPdfHtml(opts: {
       ul, ol { padding-left: 18px; }
 
       /* Evitar "cortes mordidos" entre páginas */
-      .section, .entry, table, thead, tbody, tr, td, th, h2, h3, .header, .kpi, ul, ol, li {
+      .section, table, thead, tbody, tr, td, th, h2, h3, .header, .kpi, ul, ol, li {
         break-inside: avoid; page-break-inside: avoid;
+      }
+
+      /* Permitir que las entradas se puedan partir entre páginas */
+      .entry {
+        break-inside: auto;
+        page-break-inside: auto;
+      }
+
+      .pre {
+        max-height: none;
+        break-inside: auto;
+        page-break-inside: auto;
       }
       .page-break { page-break-before: always; break-before: page; }
       @media print { .page-break { page-break-before: always; break-before: page; } }

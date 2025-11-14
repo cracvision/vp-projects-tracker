@@ -60,7 +60,7 @@ export default function EditEntryDialog({
       const payload = {
         task_id: normalizedTaskId,
         hours: validateNumber(form.hours, 0.1, 24),
-        notes: sanitizeText(form.notes, 2000),
+        notes: sanitizeText(form.notes, 10000),
       };
       const { error } = await supabase.from("daily_entries").update(payload).eq("id", entryId);
       if (error) throw error;

@@ -78,7 +78,7 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
         author_uid: user.id,
         date_iso: selectedDate,
         hours: validateNumber(formData.hours, 0.1, 24),
-        notes: sanitizeText(formData.notes, 2000),
+        notes: sanitizeText(formData.notes, 10000),
       });
 
       if (error) throw error;
