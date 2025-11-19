@@ -119,22 +119,23 @@ function buildHeader(logoDataUrl: string, params: InvoicePdfParams): Content {
 }
 
 function buildCompanyAndDatesSection(params: InvoicePdfParams): Content {
+  // Usar valores por defecto de Vista Pelícano si no se proporcionan
+  const companyName = params.companyName || 'Carlos Acevedo\nVista Pelícano LLC';
+  const companyAddress = params.companyAddress || 'Fajardo, PR 00738';
+  
   // Left stack: issuer information
   const leftStack: any[] = [
     { 
       text: 'EMITIDA POR:', 
       style: 'sectionHeader',
       margin: [0, 0, 0, 5] as [number, number, number, number],
-    }
-  ];
-
-  if (params.companyName) {
-    leftStack.push({ 
-      text: params.companyName, 
+    },
+    { 
+      text: companyName, 
       style: 'companyName',
       margin: [0, 0, 0, 3] as [number, number, number, number],
-    });
-  }
+    }
+  ];
   
   if (params.companyTaxId) {
     leftStack.push({ 
@@ -144,13 +145,11 @@ function buildCompanyAndDatesSection(params: InvoicePdfParams): Content {
     });
   }
   
-  if (params.companyAddress) {
-    leftStack.push({ 
-      text: params.companyAddress, 
-      style: 'normalText',
-      margin: [0, 0, 0, 2] as [number, number, number, number],
-    });
-  }
+  leftStack.push({ 
+    text: companyAddress, 
+    style: 'normalText',
+    margin: [0, 0, 0, 2] as [number, number, number, number],
+  });
   
   if (params.companyPhone) {
     leftStack.push({ 
@@ -216,7 +215,7 @@ function buildServicesTable(
   return {
     table: {
       headerRows: 1, // Headers repeat automatically on each page
-      widths: ['*', 70, 50, 60, 70],
+      widths: ['*', 60, 45, 55, 65],
       body: [
         // Header row
         [
