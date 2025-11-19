@@ -1,5 +1,5 @@
 import { TDocumentDefinitions, Content, ContentTable } from 'pdfmake/interfaces';
-import pdfMake from './pdfmake-config';
+import { createConfiguredPdf } from './pdfmake-config';
 import { BRAND_LOGO_URL, fetchAsDataUrl } from './brand';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -206,7 +206,7 @@ export async function generateDailyReportPdf(opts: {
 
   // Generate and download
   const timestamp = format(new Date(), 'yyyy-MM-dd_HHmm');
-  pdfMake.createPdf(docDefinition).download(`reporte-diario-${projectName}-${date}-${timestamp}.pdf`);
+  createConfiguredPdf(docDefinition).download(`reporte-diario-${projectName}-${date}-${timestamp}.pdf`);
 }
 
 /**
@@ -429,5 +429,5 @@ export async function generateStatusReportPdf(opts: {
 
   // Generate and download
   const timestamp = format(new Date(), 'yyyy-MM-dd_HHmm');
-  pdfMake.createPdf(docDefinition).download(`reporte-estado-${projectName}-${timestamp}.pdf`);
+  createConfiguredPdf(docDefinition).download(`reporte-estado-${projectName}-${timestamp}.pdf`);
 }
