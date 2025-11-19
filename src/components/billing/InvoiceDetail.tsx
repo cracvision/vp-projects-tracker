@@ -81,7 +81,7 @@ export function InvoiceDetail({
       // Cargar factura con joins
       const { data: invData, error: invErr } = await supabase
         .from("invoices")
-        .select("*, projects(name), profiles:owner_uid(full_name)")
+        .select("*, projects(name), profiles!owner_uid(full_name)")
         .eq("id", invoiceId)
         .single();
 
