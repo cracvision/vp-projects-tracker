@@ -5,12 +5,8 @@ import { Input } from "@/components/ui/input";
 import { FileText, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import html2pdf from "html2pdf.js";
-import DOMPurify from "dompurify";
 import { format } from "date-fns";
-import { es } from "date-fns/locale";
-import { ymdToLocalDate } from "@/lib/date";
-import { wrapPdfHtml, fmt, fmtTime, fmtStamp, generateStatusPdfDirect } from "@/lib/reports";
+import { generateDailyReportPdf, generateStatusReportPdf } from "@/lib/reports";
 
 interface ReportsSectionProps {
   project: {
@@ -33,41 +29,11 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         .order("created_at", { ascending: true });
       if (error) throw error;
 
-      const total = (entries || []).reduce((s, e) => s + (e.hours || 0), 0);
-
-      const body = `
-        <h2>Entradas del día — ${fmt(date)}</h2>
-        <div class="hr"></div>
-        <div class="kpi">Total horas: ${total.toFixed(1)}h</div>
-        <div style="margin-top:12px;">
-          ${(entries || []).map((e: any) => `
-            <div class="entry">
-              <div style="display:flex; justify-content:space-between; gap:8px;">
-                <div><strong>${e.tasks?.name || "Sin asignar"}</strong> • ${fmtTime(e.created_at)}</div>
-                <div>${e.hours}h</div>
-              </div>
-              ${e.notes ? `<div class="pre" style="margin-top:6px;">${DOMPurify.sanitize(e.notes)}</div>` : `<em class="muted">Sin notas</em>`}
-            </div>
-          `).join("")}
-        </div>
-      `;
-
-      const html = await wrapPdfHtml({
-        title: `Reporte Diario — ${project.name}`,
-        subtitle: format(new Date(), "PPPp", { locale: es }),
-        body,
+      await generateDailyReportPdf({
+        projectName: project.name,
+        date,
+        entries: entries || [],
       });
-
-      const timestamp = format(new Date(), "yyyy-MM-dd_HHmm");
-      await html2pdf()
-        .set({
-          margin: 10,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
-        })
-        .from(html)
-        .save(`reporte-diario-${project.name}-${date}-${timestamp}.pdf`);
 
       toast({
         title: "Reporte generado",
@@ -121,15 +87,14 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
 
       const timestamp = format(new Date(), "yyyy-MM-dd_HHmm");
 
-      // Generar PDF usando jsPDF directamente
-      await generateStatusPdfDirect({
+      // Generate PDF using pdfmake
+      await generateStatusReportPdf({
         projectName: project.name,
         tasks: tasks || [],
         entries: entries || [],
         totalWorked,
         unassignedHours,
         overallProgress: overall,
-        timestamp,
       });
 
       toast({
