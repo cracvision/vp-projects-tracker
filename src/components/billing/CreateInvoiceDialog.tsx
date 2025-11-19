@@ -44,6 +44,7 @@ export function CreateInvoiceDialog({
   const [invoiceDate, setInvoiceDate] = useState(
     new Date().toISOString().slice(0, 10)
   );
+  const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -136,6 +137,7 @@ export function CreateInvoiceDialog({
             project_id: project.id,
             status: "Pendiente",
             date: invoiceDate,
+            due_date: dueDate || null,
             total_amount: 0,
             notes: notes || null,
             invoice_number: 0, // El trigger lo reemplazará
@@ -152,7 +154,7 @@ export function CreateInvoiceDialog({
         const amount = Number(e.hours) * Number(rate);
         total += amount;
         const taskName = e.tasks?.name || "Trabajo";
-        const desc = `[${e.date_iso}] ${taskName} — ${(e.notes || "").slice(0, 140)}`;
+        const desc = `[${e.date_iso}] ${taskName} — ${e.notes || ""}`;
         return {
           invoice_id: inv.id,
           daily_entry_id: e.id,
@@ -198,6 +200,7 @@ export function CreateInvoiceDialog({
       onCreated();
       onOpenChange(false);
       setSelectedIds(new Set());
+      setDueDate("");
       setNotes("");
     } catch (error: any) {
       toast({
@@ -239,13 +242,24 @@ export function CreateInvoiceDialog({
           </div>
 
           {/* Fecha y notas de la factura */}
-          <div className="space-y-2">
-            <Label>Fecha de la factura</Label>
-            <Input
-              type="date"
-              value={invoiceDate}
-              onChange={(e) => setInvoiceDate(e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Fecha de la factura</Label>
+              <Input
+                type="date"
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Fecha de vencimiento</Label>
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
