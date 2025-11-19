@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { Download, Loader2 } from "lucide-react";
 import { downloadInvoicePDF } from "@/lib/invoicePdf";
 import {
@@ -65,12 +65,32 @@ export function InvoiceDetail({
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
     if (open && invoiceId) {
       loadInvoice();
+      loadProfile();
     }
   }, [open, invoiceId]);
+
+  const loadProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) throw error;
+      setProfile(data);
+    } catch (error) {
+      console.error("Error loading profile:", error);
+    }
+  };
 
   const loadInvoice = async () => {
     if (!invoiceId) return;
@@ -112,11 +132,16 @@ export function InvoiceDetail({
 
     setDownloading(true);
     try {
+      // Calcular due_date si no existe (30 días desde emisión)
+      const dueDate = (invoice as any).due_date 
+        ? format(new Date((invoice as any).due_date), "dd/MM/yyyy")
+        : format(addDays(new Date(invoice.date), 30), "dd/MM/yyyy");
+
       await downloadInvoicePDF({
         invoiceNumber: invoice.invoice_number,
         invoiceDate: format(new Date(invoice.date), "dd/MM/yyyy"),
+        dueDate,
         projectName: invoice.projects?.name || "Proyecto",
-        ownerName: undefined,
         items: items.map((i) => ({
           description: i.description,
           entryDate: format(new Date(i.entry_date), "dd/MM/yyyy"),
@@ -124,8 +149,21 @@ export function InvoiceDetail({
           rate: Number(i.rate),
           amount: Number(i.amount),
         })),
+        subtotal: (invoice as any).subtotal || Number(invoice.total_amount),
+        taxRate: (invoice as any).tax_rate || undefined,
+        taxAmount: (invoice as any).tax_amount || undefined,
+        discount: (invoice as any).discount || undefined,
         total: Number(invoice.total_amount),
         notes: invoice.notes || undefined,
+        // Datos del emisor
+        companyName: profile?.company_name || undefined,
+        companyAddress: profile?.company_address || undefined,
+        companyTaxId: profile?.company_tax_id || undefined,
+        companyPhone: profile?.company_phone || undefined,
+        companyEmail: profile?.company_email || undefined,
+        // Instrucciones de pago
+        paymentInstructions: profile?.payment_instructions || undefined,
+        bankAccount: profile?.bank_account || undefined,
       });
 
       toast({

@@ -148,36 +148,51 @@ export type Database = {
         Row: {
           created_at: string
           date: string
+          discount: number | null
+          due_date: string | null
           id: string
           invoice_number: number
           notes: string | null
           owner_uid: string
           project_id: string
           status: string
+          subtotal: number | null
+          tax_amount: number | null
+          tax_rate: number | null
           total_amount: number
           updated_at: string
         }
         Insert: {
           created_at?: string
           date?: string
+          discount?: number | null
+          due_date?: string | null
           id?: string
           invoice_number: number
           notes?: string | null
           owner_uid: string
           project_id: string
           status?: string
+          subtotal?: number | null
+          tax_amount?: number | null
+          tax_rate?: number | null
           total_amount?: number
           updated_at?: string
         }
         Update: {
           created_at?: string
           date?: string
+          discount?: number | null
+          due_date?: string | null
           id?: string
           invoice_number?: number
           notes?: string | null
           owner_uid?: string
           project_id?: string
           status?: string
+          subtotal?: number | null
+          tax_amount?: number | null
+          tax_rate?: number | null
           total_amount?: number
           updated_at?: string
         }
@@ -193,24 +208,45 @@ export type Database = {
       }
       profiles: {
         Row: {
+          bank_account: string | null
+          company_address: string | null
+          company_email: string | null
+          company_name: string | null
+          company_phone: string | null
+          company_tax_id: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
           id: string
+          payment_instructions: string | null
           updated_at: string | null
         }
         Insert: {
+          bank_account?: string | null
+          company_address?: string | null
+          company_email?: string | null
+          company_name?: string | null
+          company_phone?: string | null
+          company_tax_id?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id: string
+          payment_instructions?: string | null
           updated_at?: string | null
         }
         Update: {
+          bank_account?: string | null
+          company_address?: string | null
+          company_email?: string | null
+          company_name?: string | null
+          company_phone?: string | null
+          company_tax_id?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
+          payment_instructions?: string | null
           updated_at?: string | null
         }
         Relationships: []
