@@ -1,10 +1,12 @@
-import html2pdf from "html2pdf.js";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { BRAND_LOGO_URL, fetchAsDataUrl } from "./brand";
 
 interface InvoicePdfParams {
   invoiceNumber: number;
   invoiceDate: string;
+  dueDate?: string;
   projectName: string;
-  ownerName?: string;
   items: Array<{
     description: string;
     entryDate: string;
@@ -12,88 +14,254 @@ interface InvoicePdfParams {
     rate: number;
     amount: number;
   }>;
+  subtotal: number;
+  taxRate?: number;
+  taxAmount?: number;
+  discount?: number;
   total: number;
   notes?: string;
+  // Datos del emisor
+  companyName?: string;
+  companyAddress?: string;
+  companyTaxId?: string;
+  companyPhone?: string;
+  companyEmail?: string;
+  // Instrucciones de pago
+  paymentInstructions?: string;
+  bankAccount?: string;
 }
 
 export async function downloadInvoicePDF(params: InvoicePdfParams) {
-  const logoUrl = "https://static.wixstatic.com/media/86b1c8_5b83096c35e8498db5dc4b56b0108526~mv2.png";
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4",
+  });
+
   const currency = (n: number) =>
-    new Intl.NumberFormat("en-US", {
+    new Intl.NumberFormat("es-MX", {
       style: "currency",
       currency: "USD",
     }).format(n);
 
-  const rows = params.items
-    .map(
-      (i) => `
-    <tr>
-      <td style="padding:8px;border-bottom:1px solid #eee">${i.description}</td>
-      <td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${i.entryDate}</td>
-      <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${i.hours.toFixed(2)}</td>
-      <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${currency(i.rate)}</td>
-      <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${currency(i.amount)}</td>
-    </tr>
-  `
-    )
-    .join("");
+  let y = 15;
 
-  const html = `
-  <div style="font-family:Inter,system-ui,-apple-system,Segoe UI; padding:24px; max-width:900px">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <img src="${logoUrl}" style="height:48px; object-fit:contain;" />
-        <div>
-          <div style="font-size:20px; font-weight:700;">Factura #${params.invoiceNumber}</div>
-          <div style="color:#666">Fecha: ${params.invoiceDate}</div>
-        </div>
-      </div>
-      ${params.ownerName ? `<div style="text-align:right;color:#333">Emitida por:<br/><strong>${params.ownerName}</strong></div>` : ""}
-    </div>
+  // Logo
+  try {
+    const logoDataUrl = await fetchAsDataUrl(BRAND_LOGO_URL);
+    doc.addImage(logoDataUrl, "PNG", 15, y, 40, 15);
+  } catch (err) {
+    console.error("Error loading logo:", err);
+  }
 
-    <div style="margin:12px 0 20px 0;">
-      <div><strong>Proyecto:</strong> ${params.projectName}</div>
-    </div>
+  // "FACTURA" título
+  doc.setFontSize(26);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(30, 41, 59);
+  doc.text("FACTURA", 195, y + 8, { align: "right" });
 
-    <table style="width:100%; border-collapse:collapse; font-size:14px;">
-      <thead>
-        <tr>
-          <th style="text-align:left; border-bottom:2px solid #ddd; padding:8px;">Descripción</th>
-          <th style="text-align:center; border-bottom:2px solid #ddd; padding:8px;">Fecha</th>
-          <th style="text-align:right; border-bottom:2px solid #ddd; padding:8px;">Horas</th>
-          <th style="text-align:right; border-bottom:2px solid #ddd; padding:8px;">Tarifa</th>
-          <th style="text-align:right; border-bottom:2px solid #ddd; padding:8px;">Importe</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
+  // Número de factura
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 116, 139);
+  doc.text(`#${params.invoiceNumber}`, 195, y + 15, { align: "right" });
 
-    <div style="display:flex; justify-content:flex-end; margin-top:16px;">
-      <div style="min-width:260px;">
-        <div style="display:flex; justify-content:space-between; padding:6px 0;">
-          <div style="color:#666">Total</div>
-          <div style="font-weight:700">${currency(params.total)}</div>
-        </div>
-      </div>
-    </div>
+  y += 25;
 
-    ${
-      params.notes
-        ? `
-    <div style="margin-top:16px; color:#555; font-size:13px;">
-      <strong>Notas:</strong><br/>${params.notes}
-    </div>`
-        : ""
+  // Información del Emisor (lado izquierdo)
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(71, 85, 105);
+  doc.text("EMITIDA POR:", 15, y);
+  
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(51, 65, 85);
+  y += 5;
+  
+  if (params.companyName) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(params.companyName, 15, y);
+    y += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+  }
+  
+  if (params.companyTaxId) {
+    doc.text(`RFC/NIF: ${params.companyTaxId}`, 15, y);
+    y += 4;
+  }
+  
+  if (params.companyAddress) {
+    const addressLines = doc.splitTextToSize(params.companyAddress, 80);
+    doc.text(addressLines, 15, y);
+    y += addressLines.length * 4;
+  }
+  
+  if (params.companyPhone) {
+    doc.text(`Tel: ${params.companyPhone}`, 15, y);
+    y += 4;
+  }
+  
+  if (params.companyEmail) {
+    doc.text(`Email: ${params.companyEmail}`, 15, y);
+    y += 4;
+  }
+
+  // Fechas e información (lado derecho)
+  let rightY = 45;
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(71, 85, 105);
+  doc.text("FECHA EMISIÓN:", 130, rightY);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(51, 65, 85);
+  doc.text(params.invoiceDate, 195, rightY, { align: "right" });
+  rightY += 6;
+
+  if (params.dueDate) {
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(71, 85, 105);
+    doc.text("FECHA VENCIMIENTO:", 130, rightY);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(51, 65, 85);
+    doc.text(params.dueDate, 195, rightY, { align: "right" });
+    rightY += 6;
+  }
+
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(71, 85, 105);
+  doc.text("PROYECTO:", 130, rightY);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(51, 65, 85);
+  const projectLines = doc.splitTextToSize(params.projectName, 60);
+  doc.text(projectLines, 195, rightY, { align: "right" });
+
+  y = Math.max(y, rightY + projectLines.length * 5) + 10;
+
+  // Tabla de servicios con autoTable
+  autoTable(doc, {
+    startY: y,
+    head: [["Descripción", "Fecha", "Horas", "Tarifa", "Importe"]],
+    body: params.items.map((i) => [
+      i.description,
+      i.entryDate,
+      i.hours.toFixed(2),
+      currency(i.rate),
+      currency(i.amount),
+    ]),
+    columnStyles: {
+      0: { cellWidth: 85 },
+      1: { cellWidth: 25, halign: "center" },
+      2: { cellWidth: 20, halign: "right" },
+      3: { cellWidth: 30, halign: "right" },
+      4: { cellWidth: 30, halign: "right" },
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+      overflow: "linebreak",
+      lineColor: [226, 232, 240],
+      lineWidth: 0.1,
+      textColor: [51, 65, 85],
+    },
+    headStyles: {
+      fillColor: [248, 250, 252],
+      textColor: [51, 65, 85],
+      fontStyle: "bold",
+      halign: "left",
+      lineWidth: 0.1,
+      lineColor: [203, 213, 225],
+    },
+    alternateRowStyles: {
+      fillColor: [252, 252, 253],
+    },
+    margin: { left: 15, right: 15 },
+  });
+
+  // Totales
+  const finalY = (doc as any).lastAutoTable.finalY + 10;
+  const totalsX = 130;
+  let totalsY = finalY;
+
+  doc.setFontSize(10);
+  doc.setTextColor(71, 85, 105);
+
+  // Subtotal
+  doc.text("Subtotal:", totalsX, totalsY);
+  doc.text(currency(params.subtotal), 195, totalsY, { align: "right" });
+  totalsY += 6;
+
+  // Descuento
+  if (params.discount && params.discount > 0) {
+    doc.text("Descuento:", totalsX, totalsY);
+    doc.text(`-${currency(params.discount)}`, 195, totalsY, { align: "right" });
+    totalsY += 6;
+  }
+
+  // Impuestos
+  if (params.taxRate && params.taxRate > 0 && params.taxAmount) {
+    doc.text(`IVA (${params.taxRate}%):`, totalsX, totalsY);
+    doc.text(currency(params.taxAmount), 195, totalsY, { align: "right" });
+    totalsY += 6;
+  }
+
+  // Línea divisoria
+  doc.setDrawColor(203, 213, 225);
+  doc.line(totalsX, totalsY, 195, totalsY);
+  totalsY += 5;
+
+  // Total
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(30, 41, 59);
+  doc.text("TOTAL ADEUDADO:", totalsX, totalsY);
+  doc.text(currency(params.total), 195, totalsY, { align: "right" });
+  totalsY += 10;
+
+  // Notas
+  if (params.notes) {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(71, 85, 105);
+    doc.text("NOTAS:", 15, totalsY);
+    totalsY += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    const notesLines = doc.splitTextToSize(params.notes, 180);
+    doc.text(notesLines, 15, totalsY);
+    totalsY += notesLines.length * 4 + 5;
+  }
+
+  // Instrucciones de pago
+  if (params.paymentInstructions || params.bankAccount) {
+    // Verificar si necesitamos nueva página
+    if (totalsY > 250) {
+      doc.addPage();
+      totalsY = 20;
     }
-  </div>`;
 
-  await html2pdf()
-    .set({
-      margin: 10,
-      filename: `Factura-${params.invoiceNumber}.pdf`,
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-    })
-    .from(html)
-    .save();
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(71, 85, 105);
+    doc.text("INSTRUCCIONES DE PAGO:", 15, totalsY);
+    totalsY += 6;
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(51, 65, 85);
+
+    if (params.bankAccount) {
+      doc.text(`Cuenta bancaria: ${params.bankAccount}`, 15, totalsY);
+      totalsY += 5;
+    }
+
+    if (params.paymentInstructions) {
+      const paymentLines = doc.splitTextToSize(params.paymentInstructions, 180);
+      doc.text(paymentLines, 15, totalsY);
+    }
+  }
+
+  // Guardar PDF
+  doc.save(`Factura-${params.invoiceNumber}.pdf`);
 }
