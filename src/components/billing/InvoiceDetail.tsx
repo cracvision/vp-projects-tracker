@@ -45,7 +45,6 @@ interface Invoice {
   status: string;
   notes: string | null;
   projects: { name: string } | null;
-  profiles: { full_name: string | null } | null;
 }
 
 interface InvoiceDetailProps {
@@ -81,7 +80,7 @@ export function InvoiceDetail({
       // Cargar factura con joins
       const { data: invData, error: invErr } = await supabase
         .from("invoices")
-        .select("*, projects(name), profiles!owner_uid(full_name)")
+        .select("*, projects(name)")
         .eq("id", invoiceId)
         .single();
 
@@ -117,7 +116,7 @@ export function InvoiceDetail({
         invoiceNumber: invoice.invoice_number,
         invoiceDate: format(new Date(invoice.date), "dd/MM/yyyy"),
         projectName: invoice.projects?.name || "Proyecto",
-        ownerName: invoice.profiles?.full_name || undefined,
+        ownerName: undefined,
         items: items.map((i) => ({
           description: i.description,
           entryDate: format(new Date(i.entry_date), "dd/MM/yyyy"),
@@ -216,15 +215,6 @@ export function InvoiceDetail({
                   {invoice.projects?.name || "N/A"}
                 </div>
               </div>
-
-              {invoice.profiles?.full_name && (
-                <div>
-                  <div className="text-sm text-muted-foreground">
-                    Emitida por
-                  </div>
-                  <div className="font-medium">{invoice.profiles.full_name}</div>
-                </div>
-              )}
             </div>
 
             {/* Items Table */}
