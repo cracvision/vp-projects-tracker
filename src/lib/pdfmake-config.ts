@@ -1,7 +1,14 @@
 import * as pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import { TDocumentDefinitions } from 'pdfmake/interfaces';
 
-// Configure virtual fonts
-(pdfMake as any).vfs = pdfFonts;
+/**
+ * Creates a PDF with proper font configuration
+ * This avoids the "object is not extensible" error in Vite
+ */
+export function createConfiguredPdf(docDefinition: TDocumentDefinitions) {
+  return pdfMake.createPdf(docDefinition, null, null, (pdfFonts as any).pdfMake?.vfs || pdfFonts);
+}
 
-export default pdfMake;
+// Export pdfMake for compatibility
+export { pdfMake };

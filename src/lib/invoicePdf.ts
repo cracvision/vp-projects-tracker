@@ -1,5 +1,5 @@
 import { TDocumentDefinitions, Content, ContentTable } from 'pdfmake/interfaces';
-import pdfMake from './pdfmake-config';
+import { createConfiguredPdf } from './pdfmake-config';
 import { invoiceStyles } from './invoice-styles';
 import { BRAND_LOGO_URL, fetchAsDataUrl } from './brand';
 
@@ -80,7 +80,7 @@ export async function downloadInvoicePDF(params: InvoicePdfParams) {
   };
 
   // Generate and download
-  pdfMake.createPdf(docDefinition).download(`Factura-${params.invoiceNumber}.pdf`);
+  createConfiguredPdf(docDefinition).download(`Factura-${params.invoiceNumber}.pdf`);
 }
 
 function buildHeader(logoDataUrl: string, params: InvoicePdfParams): Content {
