@@ -1,31 +1,16 @@
-import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+import * as pdfMake from "pdfmake/build/pdfmake";
+import * as pdfFonts from "pdfmake/build/vfs_fonts";
 import { TDocumentDefinitions } from 'pdfmake/interfaces';
 
-// Configurar fuentes para pdfMake de forma compatible
-const vfs =
-  (pdfFonts as any).vfs ??
-  (pdfFonts as any).pdfMake?.vfs ??
-  pdfFonts;
-
-if (typeof (pdfMake as any).setVfs === 'function') {
-  // API moderna de pdfmake: evita tocar directamente pdfMake.vfs
-  (pdfMake as any).setVfs(vfs);
-} else {
-  // Fallback por si la versión no tuviera setVfs
-  try {
-    (pdfMake as any).vfs = vfs;
-  } catch (e) {
-    console.warn('No se pudo asignar vfs directamente a pdfMake:', e);
-  }
-}
+// Configurar VFS de fuentes incorporadas usando la API correcta
+(pdfMake as any).addVirtualFileSystem(pdfFonts);
 
 /**
  * Creates a PDF with proper font configuration
- * This avoids the "object is not extensible" error in Vite
+ * Uses addVirtualFileSystem instead of setVfs/direct assignment
+ * to avoid "object is not extensible" errors in Vite
  */
 export function createConfiguredPdf(docDefinition: TDocumentDefinitions) {
-  // En este punto pdfMake ya tiene el vfs configurado
   return (pdfMake as any).createPdf(docDefinition);
 }
 

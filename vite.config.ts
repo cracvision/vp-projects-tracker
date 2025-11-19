@@ -17,7 +17,11 @@ export default defineConfig(({ mode }) => ({
     dedupe: ["react", "react-dom"],
   },
   optimizeDeps: {
-    include: ["react", "react-dom"],
-    exclude: ["pdfmake"],
+    include: [
+      "react", 
+      "react-dom",
+      "pdfmake/build/pdfmake",
+      "pdfmake/build/vfs_fonts"
+    ],
   },
 }));
