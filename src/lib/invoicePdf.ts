@@ -95,7 +95,7 @@ export async function downloadInvoicePDF(params: InvoicePdfParams) {
   };
 
   // Generate and download
-  createConfiguredPdf(docDefinition).download(`Factura-${params.invoiceNumber}.pdf`);
+  createConfiguredPdf(docDefinition).download(`Factura-${params.invoiceNumber.toString().padStart(4, '0')}.pdf`);
 }
 
 function buildHeader(logoDataUrl: string, params: InvoicePdfParams): Content {
@@ -120,7 +120,7 @@ function buildHeader(logoDataUrl: string, params: InvoicePdfParams): Content {
             margin: [0, 0, 0, 5] as [number, number, number, number],
           },
           { 
-            text: `#${params.invoiceNumber}`, 
+            text: `#${params.invoiceNumber.toString().padStart(4, '0')}`, 
             style: 'invoiceNumber', 
             alignment: 'right',
           },
