@@ -54,7 +54,9 @@ const CreateTaskDialog = ({ open, onOpenChange, projectId, onTaskCreated }: Crea
       onOpenChange(false);
       onTaskCreated();
     } catch (error: any) {
-      console.error("Create task error:", error);
+      if (import.meta.env.DEV) {
+        console.error("Create task error:", error);
+      }
       toast({
         title: "Error",
         description: "No se pudo crear la tarea. Por favor, intenta nuevamente.",

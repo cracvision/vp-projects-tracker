@@ -56,7 +56,9 @@ const ProjectDetail = () => {
 
       setProject(data);
     } catch (err: any) {
-      console.error("Error al cargar el proyecto:", err);
+      if (import.meta.env.DEV) {
+        console.error("Error al cargar el proyecto:", err);
+      }
       setError("No se pudo cargar el proyecto. Verifica tu conexión.");
     } finally {
       setLoading(false);

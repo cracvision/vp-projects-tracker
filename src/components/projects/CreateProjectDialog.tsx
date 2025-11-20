@@ -56,7 +56,9 @@ const CreateProjectDialog = ({ open, onOpenChange, onProjectCreated }: CreatePro
       onOpenChange(false);
       onProjectCreated();
     } catch (error: any) {
-      console.error("Create project error:", error);
+      if (import.meta.env.DEV) {
+        console.error("Create project error:", error);
+      }
       toast({
         title: "Error",
         description: "No se pudo crear el proyecto. Por favor, intenta nuevamente.",

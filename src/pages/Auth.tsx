@@ -54,7 +54,9 @@ const Auth = () => {
         description: "Has iniciado sesión correctamente",
       });
     } catch (error: any) {
-      console.error("Sign in error:", error);
+      if (import.meta.env.DEV) {
+        console.error("Sign in error:", error);
+      }
       toast({
         title: "Error al iniciar sesión",
         description: "No se pudo iniciar sesión. Verifica tu correo y contraseña.",
@@ -96,7 +98,9 @@ const Auth = () => {
         description: "Ya puedes iniciar sesión",
       });
     } catch (error: any) {
-      console.error("Sign up error:", error);
+      if (import.meta.env.DEV) {
+        console.error("Sign up error:", error);
+      }
       toast({
         title: "Error al crear cuenta",
         description: "No se pudo crear la cuenta. Por favor, intenta nuevamente.",

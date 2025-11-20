@@ -92,7 +92,9 @@ export async function generateDailyReportPdf(opts: {
   try {
     logoDataUrl = await fetchAsDataUrl(BRAND_LOGO_URL);
   } catch (err) {
-    console.error('Error loading logo:', err);
+    if (import.meta.env.DEV) {
+      console.error('Error loading logo:', err);
+    }
   }
 
   // Calculate totals
@@ -242,7 +244,9 @@ export async function generateStatusReportPdf(opts: {
   try {
     logoDataUrl = await fetchAsDataUrl(BRAND_LOGO_URL);
   } catch (err) {
-    console.error('Error loading logo:', err);
+    if (import.meta.env.DEV) {
+      console.error('Error loading logo:', err);
+    }
   }
 
   // Build tasks table
