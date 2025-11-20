@@ -69,7 +69,9 @@ const ProjectSummary = ({ project, refreshKey, onProjectUpdated }: ProjectSummar
         progress,
       });
     } catch (error) {
-      console.error("Error fetching metrics:", error);
+      if (import.meta.env.DEV) {
+        console.error("Error fetching metrics:", error);
+      }
     }
   };
 

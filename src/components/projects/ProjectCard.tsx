@@ -56,7 +56,9 @@ const ProjectCard = ({ project, onProjectUpdated }: ProjectCardProps) => {
         });
       }
     } catch (error) {
-      console.error("Error fetching metrics:", error);
+      if (import.meta.env.DEV) {
+        console.error("Error fetching metrics:", error);
+      }
     }
   };
 

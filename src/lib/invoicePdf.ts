@@ -44,7 +44,9 @@ export async function downloadInvoicePDF(params: InvoicePdfParams) {
   try {
     logoDataUrl = await fetchAsDataUrl(BRAND_LOGO_URL);
   } catch (err) {
-    console.error("Error loading logo:", err);
+    if (import.meta.env.DEV) {
+      console.error("Error loading logo:", err);
+    }
   }
 
   // Build document definition
