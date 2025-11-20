@@ -69,26 +69,13 @@ export async function downloadInvoicePDF(params: InvoicePdfParams) {
     },
     pageMargins: [40, 50, 40, 60] as [number, number, number, number],
     
-    // Footer with page numbering and reference note
+    // Footer with page numbering
     footer: (currentPage, pageCount) => {
       return {
-        stack: [
-          {
-            text: 'Refiérase al reporte de estado para ver el detalle específico de cada ítem facturado.',
-            alignment: 'center',
-            fontSize: 8,
-            color: '#64748b',
-            italics: true,
-            margin: [0, 0, 0, 3] as [number, number, number, number],
-          },
-          {
-            text: `Página ${currentPage} de ${pageCount}`,
-            alignment: 'center',
-            fontSize: 9,
-            color: '#64748b',
-            margin: [0, 0, 0, 0] as [number, number, number, number],
-          },
-        ],
+        text: `Página ${currentPage} de ${pageCount}`,
+        alignment: 'center',
+        fontSize: 9,
+        color: '#64748b',
         margin: [0, 10, 0, 0] as [number, number, number, number],
       };
     },
