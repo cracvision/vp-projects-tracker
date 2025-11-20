@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
+import { ymdToLocalDate } from "@/lib/date";
 
 interface DailyEntry {
   id: string;
@@ -311,7 +312,7 @@ export function CreateInvoiceDialog({
                     />
                     <div className="flex-1 text-sm">
                       <div className="font-medium">
-                        {format(new Date(entry.date_iso), "dd/MM/yyyy")} -{" "}
+                        {format(ymdToLocalDate(entry.date_iso), "dd/MM/yyyy")} -{" "}
                         {entry.tasks?.name || "Sin tarea"} ({entry.hours}h)
                       </div>
                       {entry.notes && (

@@ -20,6 +20,7 @@ import { toast } from "@/hooks/use-toast";
 import { format, addDays } from "date-fns";
 import { Download, Loader2 } from "lucide-react";
 import { downloadInvoicePDF } from "@/lib/invoicePdf";
+import { ymdToLocalDate } from "@/lib/date";
 import {
   Select,
   SelectContent,
@@ -146,7 +147,7 @@ export function InvoiceDetail({
         projectName: invoice.projects?.name || "Proyecto",
         items: items.map((i) => ({
           description: i.description,
-          entryDate: format(new Date(i.entry_date), "dd/MM/yyyy"),
+          entryDate: format(ymdToLocalDate(i.entry_date), "dd/MM/yyyy"),
           hours: Number(i.hours),
           rate: Number(i.rate),
           amount: Number(i.amount),
@@ -276,7 +277,7 @@ export function InvoiceDetail({
                         <div className="truncate">{item.description}</div>
                       </TableCell>
                       <TableCell className="text-center">
-                        {format(new Date(item.entry_date), "dd/MM/yyyy")}
+                        {format(ymdToLocalDate(item.entry_date), "dd/MM/yyyy")}
                       </TableCell>
                       <TableCell className="text-right">
                         {Number(item.hours).toFixed(2)}
