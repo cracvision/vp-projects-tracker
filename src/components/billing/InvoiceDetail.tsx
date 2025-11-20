@@ -137,12 +137,12 @@ export function InvoiceDetail({
     try {
       // Calcular due_date si no existe (30 días desde emisión)
       const dueDate = (invoice as any).due_date 
-        ? format(new Date((invoice as any).due_date), "dd/MM/yyyy")
-        : format(addDays(new Date(invoice.date), 30), "dd/MM/yyyy");
+        ? format(ymdToLocalDate((invoice as any).due_date), "dd/MM/yyyy")
+        : format(addDays(ymdToLocalDate(invoice.date), 30), "dd/MM/yyyy");
 
       await downloadInvoicePDF({
         invoiceNumber: invoice.invoice_number,
-        invoiceDate: format(new Date(invoice.date), "dd/MM/yyyy"),
+        invoiceDate: format(ymdToLocalDate(invoice.date), "dd/MM/yyyy"),
         dueDate,
         projectName: invoice.projects?.name || "Proyecto",
         items: items.map((i) => ({
@@ -238,7 +238,7 @@ export function InvoiceDetail({
                 <div>
                   <div className="text-sm text-muted-foreground">Fecha</div>
                   <div className="font-medium">
-                    {format(new Date(invoice.date), "dd/MM/yyyy")}
+                    {format(ymdToLocalDate(invoice.date), "dd/MM/yyyy")}
                   </div>
                 </div>
                 <Badge
