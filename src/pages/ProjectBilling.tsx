@@ -185,7 +185,7 @@ export default function ProjectBilling() {
                   {invoices.map((invoice) => (
                     <TableRow key={invoice.id}>
                       <TableCell className="font-medium">
-                        #{invoice.invoice_number}
+                        #{invoice.invoice_number.toString().padStart(4, '0')}
                       </TableCell>
                       <TableCell>
                         {format(new Date(invoice.date), "dd/MM/yyyy")}

@@ -222,7 +222,7 @@ export function InvoiceDetail({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Factura #{invoice?.invoice_number || ""}</SheetTitle>
+          <SheetTitle>Factura #{invoice?.invoice_number?.toString().padStart(4, '0') || ""}</SheetTitle>
         </SheetHeader>
 
         {loading ? (
