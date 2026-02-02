@@ -146,6 +146,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          adjusted_total: number | null
           created_at: string
           date: string
           discount: number | null
@@ -163,6 +164,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          adjusted_total?: number | null
           created_at?: string
           date?: string
           discount?: number | null
@@ -180,6 +182,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          adjusted_total?: number | null
           created_at?: string
           date?: string
           discount?: number | null
