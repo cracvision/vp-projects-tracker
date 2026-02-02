@@ -20,6 +20,7 @@ interface InvoicePdfParams {
   taxAmount?: number;
   discount?: number;
   total: number;
+  adjustedTotal?: number;
   notes?: string;
   // Issuer data
   companyName?: string;
@@ -352,12 +353,28 @@ function buildTotalsSection(
     margin: [0, 5, 0, 10] as [number, number, number, number],
   });
 
-  // Total
+  // Si hay adjusted_total, mostrar total original tachado
+  if (params.adjustedTotal) {
+    totalsStack.push({
+      columns: [
+        { text: 'TOTAL ORIGINAL:', style: 'strikethroughLabel', width: 'auto' },
+        { 
+          text: currency(params.total), 
+          style: 'strikethroughAmount', 
+          alignment: 'right', 
+          width: 100,
+        },
+      ],
+      margin: [0, 0, 0, 4] as [number, number, number, number],
+    });
+  }
+
+  // Total final (usa adjustedTotal si existe, sino total)
   totalsStack.push({
     columns: [
       { text: 'TOTAL ADEUDADO:', style: 'totalLabel', width: 'auto' },
       { 
-        text: currency(params.total), 
+        text: currency(params.adjustedTotal ?? params.total), 
         style: 'totalAmount', 
         alignment: 'right', 
         width: 100,
