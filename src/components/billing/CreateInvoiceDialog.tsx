@@ -348,7 +348,9 @@ export function CreateInvoiceDialog({
             </div>
             <div className="flex justify-between text-lg font-bold">
               <span>Total:</span>
-              <span>${totalAmount.toFixed(2)}</span>
+              <span className={adjustedTotal ? "line-through text-muted-foreground" : ""}>
+                ${totalAmount.toFixed(2)}
+              </span>
             </div>
             <div className="flex justify-between items-center text-lg">
               <Label htmlFor="adjusted-total">Total Después de Ajuste:</Label>
