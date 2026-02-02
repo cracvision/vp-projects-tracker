@@ -49,6 +49,7 @@ export function CreateInvoiceDialog({
   const [notes, setNotes] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [adjustedTotal, setAdjustedTotal] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -142,6 +143,7 @@ export function CreateInvoiceDialog({
             total_amount: 0,
             notes: notes || null,
             invoice_number: 0, // El trigger lo reemplazará
+            adjusted_total: adjustedTotal ? parseFloat(adjustedTotal) : null,
           },
         ])
         .select("*")
@@ -203,6 +205,7 @@ export function CreateInvoiceDialog({
       setSelectedIds(new Set());
       setDueDate("");
       setNotes("");
+      setAdjustedTotal("");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -346,6 +349,18 @@ export function CreateInvoiceDialog({
             <div className="flex justify-between text-lg font-bold">
               <span>Total:</span>
               <span>${totalAmount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center text-lg">
+              <Label htmlFor="adjusted-total">Total Después de Ajuste:</Label>
+              <Input
+                id="adjusted-total"
+                type="text"
+                inputMode="decimal"
+                className="w-32 text-right font-bold"
+                placeholder={`$${totalAmount.toFixed(2)}`}
+                value={adjustedTotal}
+                onChange={(e) => setAdjustedTotal(e.target.value)}
+              />
             </div>
           </div>
 
