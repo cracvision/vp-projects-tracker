@@ -31,7 +31,7 @@ interface DailyEntry {
   notes: string | null;
   created_at: string;
   date_iso: string;
-  tasks: { name: string } | null;
+  tasks: { id: string; name: string } | null;
 }
 
 interface DailyEntriesListProps {
@@ -64,7 +64,7 @@ const DailyEntriesList = ({
     try {
       const { data, error } = await supabase
         .from("daily_entries")
-        .select("*, tasks(name)")
+        .select("*, tasks(id,name)")
         .eq("project_id", projectId)
         .eq("date_iso", selectedDate)
         .order("created_at", { ascending: false });
@@ -168,7 +168,7 @@ const DailyEntriesList = ({
                       <Button
                         variant="ghost" size="icon" title="Editar"
                         onClick={() => setEditing({ open: true, entryId: entry.id, initial: {
-                          taskId: entry.task_id,
+                          taskId: entry.task_id ?? entry.tasks?.id ?? null,
                           hours: entry.hours,
                           notes: entry.notes,
                           date_iso: entry.date_iso,

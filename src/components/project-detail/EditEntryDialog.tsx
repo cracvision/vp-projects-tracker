@@ -33,6 +33,7 @@ export default function EditEntryDialog({
     notes: initial.notes ?? "",
   });
   const [saving, setSaving] = useState(false);
+  const [taskTouched, setTaskTouched] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -48,17 +49,25 @@ export default function EditEntryDialog({
       hours: String(initial.hours ?? ""),
       notes: initial.notes ?? "",
     });
+    setTaskTouched(false);
   }, [initial]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
-      const normalizedTaskId =
-        !form.taskId || form.taskId === "none" || form.taskId.trim() === "" ? null : form.taskId;
+      // Si el usuario no tocó el campo Tarea, mantener el valor original
+      let finalTaskId: string | null;
+      if (!taskTouched) {
+        finalTaskId = initial.taskId || null;
+      } else {
+        finalTaskId = !form.taskId || form.taskId === "none" || form.taskId.trim() === "" 
+          ? null 
+          : form.taskId;
+      }
 
       const payload = {
-        task_id: normalizedTaskId,
+        task_id: finalTaskId,
         hours: validateNumber(form.hours, 0.1, 24),
         notes: sanitizeText(form.notes, 10000),
       };
@@ -92,7 +101,13 @@ export default function EditEntryDialog({
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Tarea</Label>
-            <Select value={form.taskId || "none"} onValueChange={(v) => setForm((s) => ({ ...s, taskId: v || "none" }))}>
+            <Select 
+              value={form.taskId || "none"} 
+              onValueChange={(v) => {
+                setTaskTouched(true);
+                setForm((s) => ({ ...s, taskId: v || "none" }));
+              }}
+            >
               <SelectTrigger><SelectValue placeholder="Selecciona una tarea..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Sin asignar</SelectItem>
