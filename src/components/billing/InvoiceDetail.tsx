@@ -157,6 +157,9 @@ export function InvoiceDetail({
         taxAmount: (invoice as any).tax_amount || undefined,
         discount: (invoice as any).discount || undefined,
         total: Number(invoice.total_amount),
+        adjustedTotal: (invoice as any).adjusted_total 
+          ? Number((invoice as any).adjusted_total) 
+          : undefined,
         notes: invoice.notes || undefined,
         // Datos del emisor
         companyName: profile?.company_name || undefined,
@@ -297,9 +300,19 @@ export function InvoiceDetail({
             {/* Total */}
             <div className="flex justify-end">
               <div className="min-w-[200px] space-y-2">
+                {(invoice as any).adjusted_total && (
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Total Original:</span>
+                    <span className="line-through">
+                      ${Number(invoice.total_amount).toFixed(2)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total:</span>
-                  <span>${Number(invoice.total_amount).toFixed(2)}</span>
+                  <span>
+                    ${Number((invoice as any).adjusted_total || invoice.total_amount).toFixed(2)}
+                  </span>
                 </div>
               </div>
             </div>

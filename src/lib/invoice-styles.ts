@@ -67,4 +67,15 @@ export const invoiceStyles: StyleDictionary = {
     fontSize: 10,
     color: '#475569',
   },
+  
+  // Total tachado (cuando hay adjusted_total)
+  strikethroughLabel: {
+    fontSize: 9,
+    color: '#94a3b8', // slate-400 (atenuado)
+  },
+  strikethroughAmount: {
+    fontSize: 9,
+    color: '#94a3b8',
+    decoration: 'lineThrough',
+  },
 };
