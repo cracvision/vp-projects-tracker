@@ -26,9 +26,11 @@ import remarkGfm from "remark-gfm";
 
 interface DailyEntry {
   id: string;
+  task_id: string | null;
   hours: number;
   notes: string | null;
   created_at: string;
+  date_iso: string;
   tasks: { name: string } | null;
 }
 
@@ -166,10 +168,10 @@ const DailyEntriesList = ({
                       <Button
                         variant="ghost" size="icon" title="Editar"
                         onClick={() => setEditing({ open: true, entryId: entry.id, initial: {
-                          taskId: (entry as any).task_id ?? null,
+                          taskId: entry.task_id,
                           hours: entry.hours,
                           notes: entry.notes,
-                          date_iso: (entry as any).date_iso,
+                          date_iso: entry.date_iso,
                         }})}
                       >
                         <Pencil className="h-4 w-4" />
