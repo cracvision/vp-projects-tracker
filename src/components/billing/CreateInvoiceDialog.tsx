@@ -346,19 +346,19 @@ export function CreateInvoiceDialog({
                 ${rate.toFixed(2)}/h
               </span>
             </div>
-            <div className="flex justify-between text-lg font-bold">
+            <div className={`flex justify-between font-bold ${adjustedTotal ? "text-xs" : "text-lg"}`}>
               <span>Total:</span>
               <span className={adjustedTotal ? "line-through text-muted-foreground" : ""}>
                 ${totalAmount.toFixed(2)}
               </span>
             </div>
-            <div className="flex justify-between items-center text-lg">
+            <div className="flex justify-between items-center text-xs">
               <Label htmlFor="adjusted-total">Total Después de Ajuste:</Label>
               <Input
                 id="adjusted-total"
                 type="text"
                 inputMode="decimal"
-                className="w-32 text-right font-bold"
+                className="w-32 text-right font-bold text-xs"
                 placeholder={`$${totalAmount.toFixed(2)}`}
                 value={adjustedTotal}
                 onChange={(e) => setAdjustedTotal(e.target.value)}
