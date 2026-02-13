@@ -1,46 +1,43 @@
 
+# Plan: Corregir el guardado del Total Después de Ajuste
 
-# Plan: Actualizar factura existente con Total Ajustado
+## Problema encontrado
 
-## Situación actual
+El campo "Total Después de Ajuste" no se guardó correctamente en la factura #0003. La base de datos muestra:
 
-La factura #0002 tiene el campo `adjusted_total` en NULL porque fue creada antes de implementar esta funcionalidad:
+| Factura | total_amount | adjusted_total |
+|---------|-------------|----------------|
+| #0003   | $3,932.50   | NULL           |
 
-| Campo | Valor actual |
-|-------|-------------|
-| invoice_number | 2 |
-| total_amount | $28,470.00 |
-| adjusted_total | NULL ← vacío |
-
-El código ya está listo y funcionando. Solo falta el dato en la base de datos.
+**Causa raíz:** Cuando el usuario escribe un valor como `$1,700.00` en el campo, el código usa `parseFloat("$1,700.00")` que retorna `NaN` porque `parseFloat` no puede interpretar el signo `$` ni las comas. Ese `NaN` se guarda como `null` en la base de datos.
 
 ## Solución
 
-Actualizar el registro de la factura #0002 para agregar el valor de `adjusted_total = 5907.50` (el valor que veo en tu captura de pantalla).
+### 1. Limpiar el input antes de hacer parseFloat (en `CreateInvoiceDialog.tsx`)
 
-## Acción a realizar
+Modificar la linea 146 para eliminar caracteres no numericos (`$`, `,`, espacios) antes de convertir:
 
-Ejecutar esta actualización en la base de datos:
+```typescript
+// Antes (linea 146):
+adjusted_total: adjustedTotal ? parseFloat(adjustedTotal) : null,
+
+// Después:
+adjusted_total: adjustedTotal 
+  ? parseFloat(adjustedTotal.replace(/[^0-9.]/g, '')) || null 
+  : null,
+```
+
+### 2. Actualizar la factura #0003 en la base de datos
+
+Ejecutar una consulta SQL para corregir el valor que no se guardó:
 
 ```sql
 UPDATE invoices 
-SET adjusted_total = 5907.50 
-WHERE invoice_number = 2;
+SET adjusted_total = 1700.00 
+WHERE invoice_number = 3;
 ```
 
 ## Resultado esperado
 
-Una vez actualizada la base de datos:
-
-**En la vista de detalle de la factura:**
-- Aparecerá "Total Original: ~~$28,470.00~~" (tachado, pequeño)
-- Aparecerá "Total: $5,907.50" (grande, negrita)
-
-**En el PDF descargado:**
-- Aparecerá "TOTAL ORIGINAL: ~~USD 28,470.00~~" (tachado, gris, 9pt)
-- Aparecerá "TOTAL ADEUDADO: USD 5,907.50" (normal, negrita)
-
-## Nota importante
-
-Este paso manual solo es necesario para facturas creadas antes de la implementación. Las facturas nuevas que crees con un valor en "Total Después de Ajuste" ya funcionarán automáticamente.
-
+- La factura #0003 mostrara el total original ($3,932.50) tachado y el total ajustado ($1,700.00) como monto final
+- Futuras facturas aceptaran valores con `$`, comas, o solo numeros sin problemas
