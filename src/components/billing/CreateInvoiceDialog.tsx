@@ -143,7 +143,9 @@ export function CreateInvoiceDialog({
             total_amount: 0,
             notes: notes || null,
             invoice_number: 0, // El trigger lo reemplazará
-            adjusted_total: adjustedTotal ? parseFloat(adjustedTotal) : null,
+            adjusted_total: adjustedTotal
+              ? parseFloat(adjustedTotal.replace(/[^0-9.]/g, '')) || null
+              : null,
           },
         ])
         .select("*")
