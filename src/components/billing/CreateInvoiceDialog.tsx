@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +18,7 @@ interface DailyEntry {
   hours: number;
   notes: string | null;
   tasks: { name: string } | null;
+  entry_type: string | null;
 }
 
 interface Project {
@@ -62,7 +64,7 @@ export function CreateInvoiceDialog({
     try {
       let query = supabase
         .from("daily_entries")
-        .select("id, date_iso, hours, notes, tasks(name)")
+        .select("id, date_iso, hours, notes, tasks(name), entry_type")
         .eq("project_id", project.id)
         .is("invoice_id", null)
         .order("date_iso", { ascending: true })
@@ -316,9 +318,12 @@ export function CreateInvoiceDialog({
                       onCheckedChange={() => toggleEntry(entry.id)}
                     />
                     <div className="flex-1 text-sm">
-                      <div className="font-medium">
+                      <div className="font-medium flex items-center gap-2">
                         {format(ymdToLocalDate(entry.date_iso), "dd/MM/yyyy")} -{" "}
-                        {entry.tasks?.name || "Sin tarea"} ({entry.hours}h)
+                        {entry.entry_type === "excess" ? (
+                          <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">Exceso</Badge>
+                        ) : null}
+                        {entry.tasks?.name || (entry.entry_type === "excess" ? "Horas en exceso" : "Sin tarea")} ({entry.hours}h)
                       </div>
                       {entry.notes && (
                         <div className="text-muted-foreground line-clamp-1">

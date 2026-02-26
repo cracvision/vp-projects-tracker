@@ -67,6 +67,7 @@ const DailyEntriesList = ({
         .select("*, tasks(id,name)")
         .eq("project_id", projectId)
         .eq("date_iso", selectedDate)
+        .or("entry_type.eq.regular,entry_type.is.null")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
