@@ -160,14 +160,14 @@ export function CreateInvoiceDialog({
       const itemsPayload = selectedEntries.map((e) => {
         const amount = Number(e.hours) * Number(rate);
         total += amount;
-        const taskName = e.tasks?.name || "Trabajo";
+        const taskName = e.tasks?.name || (e.entry_type === "excess" ? "Horas en exceso" : "Trabajo");
         const desc = `[${e.date_iso}] ${taskName} — ${e.notes || ""}`;
         return {
           invoice_id: inv.id,
           daily_entry_id: e.id,
           description: desc,
           entry_date: e.date_iso,
-          task_name: e.tasks?.name || null,
+          task_name: e.tasks?.name || (e.entry_type === "excess" ? "Horas en exceso" : null),
           hours: e.hours,
           rate,
           amount,
