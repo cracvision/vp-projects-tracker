@@ -1,43 +1,39 @@
 
-# Plan: Corregir el guardado del Total Después de Ajuste
 
-## Problema encontrado
+# Plan: Horas Trabajadas en Exceso No Facturadas
 
-El campo "Total Después de Ajuste" no se guardó correctamente en la factura #0003. La base de datos muestra:
+## Concepto
 
-| Factura | total_amount | adjusted_total |
-|---------|-------------|----------------|
-| #0003   | $3,932.50   | NULL           |
+Agregar un campo `entry_type` a la tabla `daily_entries` para distinguir entre entradas regulares y horas en exceso. Esto permite reutilizar toda la infraestructura existente de facturación sin duplicar tablas.
 
-**Causa raíz:** Cuando el usuario escribe un valor como `$1,700.00` en el campo, el código usa `parseFloat("$1,700.00")` que retorna `NaN` porque `parseFloat` no puede interpretar el signo `$` ni las comas. Ese `NaN` se guarda como `null` en la base de datos.
+## Cambios
 
-## Solución
+### 1. Migración de base de datos
+Agregar columna `entry_type` (tipo `text`, default `'regular'`) a `daily_entries`. Valores posibles: `'regular'` y `'excess'`.
 
-### 1. Limpiar el input antes de hacer parseFloat (en `CreateInvoiceDialog.tsx`)
+### 2. Nueva sección en la vista del proyecto (`ProjectDetail.tsx`)
+Debajo de "Tareas del Proyecto", agregar una card "Horas en Exceso No Facturadas" con:
+- Formulario simple: fecha, horas, descripción/notas
+- Sin selector de tarea (no aplica)
+- Lista de entradas de tipo `excess` registradas
+- Las entradas se guardan en `daily_entries` con `task_id = null` y `entry_type = 'excess'`
 
-Modificar la linea 146 para eliminar caracteres no numericos (`$`, `,`, espacios) antes de convertir:
+### 3. Componente `ExcessHoursSection.tsx`
+Nuevo componente con:
+- Formulario para registrar horas en exceso (fecha, horas, notas)
+- Lista de horas en exceso registradas (filtradas por `entry_type = 'excess'`)
+- Indicador visual de cuáles ya fueron facturadas vs pendientes
 
-```typescript
-// Antes (linea 146):
-adjusted_total: adjustedTotal ? parseFloat(adjustedTotal) : null,
+### 4. Actualizar `CreateInvoiceDialog.tsx`
+- Al cargar entradas sin facturar, incluir también las de tipo `excess`
+- Mostrarlas en una sección separada o con un badge visual para diferenciarlas de las regulares
+- El usuario puede seleccionar entradas excess para incluirlas en la factura
 
-// Después:
-adjusted_total: adjustedTotal 
-  ? parseFloat(adjustedTotal.replace(/[^0-9.]/g, '')) || null 
-  : null,
-```
+### 5. Actualizar `DailyWorkLog.tsx`
+- Filtrar entradas regulares (`entry_type = 'regular'` o `NULL`) para que las excess no aparezcan mezcladas en el log diario normal
 
-### 2. Actualizar la factura #0003 en la base de datos
+## Resultado
+- Sección dedicada para documentar horas en exceso sin asignarlas a tareas
+- Al crear factura, las horas en exceso aparecen como entradas seleccionables
+- Separación visual clara entre trabajo regular y horas en exceso
 
-Ejecutar una consulta SQL para corregir el valor que no se guardó:
-
-```sql
-UPDATE invoices 
-SET adjusted_total = 1700.00 
-WHERE invoice_number = 3;
-```
-
-## Resultado esperado
-
-- La factura #0003 mostrara el total original ($3,932.50) tachado y el total ajustado ($1,700.00) como monto final
-- Futuras facturas aceptaran valores con `$`, comas, o solo numeros sin problemas
