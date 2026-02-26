@@ -1,0 +1,1 @@
+ALTER TABLE public.daily_entries ADD COLUMN entry_type text NOT NULL DEFAULT 'regular';

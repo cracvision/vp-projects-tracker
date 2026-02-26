@@ -19,6 +19,7 @@ export type Database = {
           author_uid: string
           created_at: string | null
           date_iso: string
+          entry_type: string
           hours: number
           id: string
           invoice_id: string | null
@@ -30,6 +31,7 @@ export type Database = {
           author_uid: string
           created_at?: string | null
           date_iso: string
+          entry_type?: string
           hours: number
           id?: string
           invoice_id?: string | null
@@ -41,6 +43,7 @@ export type Database = {
           author_uid?: string
           created_at?: string | null
           date_iso?: string
+          entry_type?: string
           hours?: number
           id?: string
           invoice_id?: string | null
