@@ -40,7 +40,8 @@ const ProjectSummary = ({ project, refreshKey, onProjectUpdated }: ProjectSummar
         supabase
           .from("daily_entries")
           .select("hours")
-          .eq("project_id", project.id),
+          .eq("project_id", project.id)
+          .or("entry_type.eq.regular,entry_type.is.null"),
       ]);
 
       const tasks = tasksRes.data ?? [];
