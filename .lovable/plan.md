@@ -1,22 +1,46 @@
 
 
-# Plan: Excluir horas en exceso del resumen del proyecto
+# Plan: Mejorar factura PDF — Total de horas y formato de notas
 
-## Problema
-La query en `ProjectSummary.tsx` (línea 40-43) trae todas las `daily_entries` sin filtrar por `entry_type`, por lo que las horas de tipo `excess` se suman a "Horas Trabajadas" y "Presupuesto Usado".
+## Cambio 1: Agregar total de horas en la sección de totales
 
-## Cambio
-
-### `src/components/project-detail/ProjectSummary.tsx` (línea 40-43)
-Agregar filtro para excluir entradas de tipo `excess`:
+**`src/lib/invoicePdf.ts`** — en `buildTotalsSection`, calcular la suma total de horas y agregar una línea "Total Horas:" antes del subtotal monetario:
 
 ```typescript
-supabase
-  .from("daily_entries")
-  .select("hours")
-  .eq("project_id", project.id)
-  .or("entry_type.eq.regular,entry_type.is.null"),
+const totalHours = params.items.reduce((sum, item) => sum + item.hours, 0);
+
+totalsStack.push({
+  columns: [
+    { text: 'Total Horas:', style: 'subtotalLabel', width: 'auto' },
+    { text: totalHours.toFixed(2), style: 'subtotalAmount', alignment: 'right', width: 100 },
+  ],
+  margin: [0, 0, 0, 4],
+});
 ```
 
-Esto es un cambio de 1 línea. Los totales se calcularán solo con entradas regulares.
+Esto se insertará como primer elemento del `totalsStack`, antes de "Subtotal:".
+
+## Cambio 2: Preservar saltos de línea en las notas
+
+**`src/lib/invoicePdf.ts`** — en `buildNotesSection`, dividir el texto por `\n` y generar un elemento por cada línea para preservar el formato original:
+
+```typescript
+function buildNotesSection(notes: string): Content {
+  const lines = notes.split('\n').map(line => ({
+    text: line || ' ',  // espacio para líneas vacías
+    style: 'normalText',
+    margin: [0, 0, 0, 2] as [number, number, number, number],
+  }));
+
+  return {
+    stack: [
+      { text: 'NOTAS:', style: 'sectionHeader', margin: [0, 10, 0, 5] },
+      ...lines,
+    ],
+    margin: [0, 0, 0, 15],
+  };
+}
+```
+
+Esto mantendrá cada línea separada tal como fue ingresada, en lugar de colapsar todo en un solo párrafo.
 
