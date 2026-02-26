@@ -291,6 +291,16 @@ function buildTotalsSection(
 ): Content {
   const totalsStack: any[] = [];
 
+  // Total hours
+  const totalHours = params.items.reduce((sum, item) => sum + item.hours, 0);
+  totalsStack.push({
+    columns: [
+      { text: 'Total Horas:', style: 'subtotalLabel', width: 'auto' },
+      { text: totalHours.toFixed(2), style: 'subtotalAmount', alignment: 'right', width: 100 },
+    ],
+    margin: [0, 0, 0, 4] as [number, number, number, number],
+  });
+
   // Subtotal
   totalsStack.push({
     columns: [
@@ -391,6 +401,12 @@ function buildTotalsSection(
 }
 
 function buildNotesSection(notes: string): Content {
+  const lines = notes.split('\n').map(line => ({
+    text: line || ' ',
+    style: 'normalText',
+    margin: [0, 0, 0, 2] as [number, number, number, number],
+  }));
+
   return {
     stack: [
       { 
@@ -398,7 +414,7 @@ function buildNotesSection(notes: string): Content {
         style: 'sectionHeader', 
         margin: [0, 10, 0, 5] as [number, number, number, number],
       },
-      { text: notes, style: 'normalText' },
+      ...lines,
     ],
     margin: [0, 0, 0, 15] as [number, number, number, number],
   };
