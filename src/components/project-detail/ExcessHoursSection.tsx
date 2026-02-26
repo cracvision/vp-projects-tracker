@@ -83,7 +83,7 @@ const ExcessHoursSection = ({ projectId, onEntryChanged }: ExcessHoursSectionPro
         task_id: null,
         author_uid: user.id,
         date_iso: formData.date,
-        hours: validateNumber(formData.hours, 0.1, 24),
+        hours: validateNumber(formData.hours, 0.1, 1000),
         notes: sanitizeText(formData.notes, 10000),
         entry_type: "excess",
       });
@@ -96,7 +96,8 @@ const ExcessHoursSection = ({ projectId, onEntryChanged }: ExcessHoursSectionPro
       onEntryChanged();
     } catch (error: any) {
       if (import.meta.env.DEV) console.error("Excess hours error:", error);
-      toast({ title: "Error", description: "No se pudo registrar. Intenta nuevamente.", variant: "destructive" });
+      const msg = error instanceof Error ? error.message : "No se pudo registrar. Intenta nuevamente.";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -147,6 +148,7 @@ const ExcessHoursSection = ({ projectId, onEntryChanged }: ExcessHoursSectionPro
               id="excess-hours"
               type="number"
               min="0.1"
+              max="1000"
               step="0.1"
               value={formData.hours}
               onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
