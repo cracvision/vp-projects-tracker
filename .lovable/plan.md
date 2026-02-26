@@ -1,39 +1,26 @@
 
 
-# Plan: Horas Trabajadas en Exceso No Facturadas
+# Plan: Mejorar descripción de items de exceso en factura
 
-## Concepto
+## Problema
+En `CreateInvoiceDialog.tsx` línea 163, cuando una entrada es de tipo `excess`, `e.tasks` es null y el fallback es "Trabajo", lo cual no es descriptivo.
 
-Agregar un campo `entry_type` a la tabla `daily_entries` para distinguir entre entradas regulares y horas en exceso. Esto permite reutilizar toda la infraestructura existente de facturación sin duplicar tablas.
+## Cambio
 
-## Cambios
+### `src/components/billing/CreateInvoiceDialog.tsx` (línea 163)
+Cambiar:
+```typescript
+const taskName = e.tasks?.name || "Trabajo";
+```
+Por:
+```typescript
+const taskName = e.tasks?.name || (e.entry_type === "excess" ? "Horas en exceso" : "Trabajo");
+```
 
-### 1. Migración de base de datos
-Agregar columna `entry_type` (tipo `text`, default `'regular'`) a `daily_entries`. Valores posibles: `'regular'` y `'excess'`.
+Y en línea 170, el `task_name`:
+```typescript
+task_name: e.tasks?.name || (e.entry_type === "excess" ? "Horas en exceso" : null),
+```
 
-### 2. Nueva sección en la vista del proyecto (`ProjectDetail.tsx`)
-Debajo de "Tareas del Proyecto", agregar una card "Horas en Exceso No Facturadas" con:
-- Formulario simple: fecha, horas, descripción/notas
-- Sin selector de tarea (no aplica)
-- Lista de entradas de tipo `excess` registradas
-- Las entradas se guardan en `daily_entries` con `task_id = null` y `entry_type = 'excess'`
-
-### 3. Componente `ExcessHoursSection.tsx`
-Nuevo componente con:
-- Formulario para registrar horas en exceso (fecha, horas, notas)
-- Lista de horas en exceso registradas (filtradas por `entry_type = 'excess'`)
-- Indicador visual de cuáles ya fueron facturadas vs pendientes
-
-### 4. Actualizar `CreateInvoiceDialog.tsx`
-- Al cargar entradas sin facturar, incluir también las de tipo `excess`
-- Mostrarlas en una sección separada o con un badge visual para diferenciarlas de las regulares
-- El usuario puede seleccionar entradas excess para incluirlas en la factura
-
-### 5. Actualizar `DailyWorkLog.tsx`
-- Filtrar entradas regulares (`entry_type = 'regular'` o `NULL`) para que las excess no aparezcan mezcladas en el log diario normal
-
-## Resultado
-- Sección dedicada para documentar horas en exceso sin asignarlas a tareas
-- Al crear factura, las horas en exceso aparecen como entradas seleccionables
-- Separación visual clara entre trabajo regular y horas en exceso
+Esto es un cambio de 2 líneas. El resto del flujo (InvoiceDetail, PDF) ya funciona correctamente con los datos que recibe.
 
