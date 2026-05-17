@@ -337,7 +337,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           display_order: number | null
-          estimated_hours_max: number
+          estimated_hours_max: number | null
           estimated_hours_min: number | null
           id: string
           name: string
@@ -350,7 +350,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           display_order?: number | null
-          estimated_hours_max: number
+          estimated_hours_max?: number | null
           estimated_hours_min?: number | null
           id?: string
           name: string
@@ -363,7 +363,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           display_order?: number | null
-          estimated_hours_max?: number
+          estimated_hours_max?: number | null
           estimated_hours_min?: number | null
           id?: string
           name?: string

@@ -40,7 +40,7 @@ const CreateTaskDialog = ({ open, onOpenChange, projectId, onTaskCreated }: Crea
         name: validatedName,
         description: formData.description ? sanitizeText(formData.description, 1000) : null,
         estimated_hours_min: formData.estimatedMin ? validateNumber(formData.estimatedMin, 0.1, 10000) : null,
-        estimated_hours_max: validateNumber(formData.estimatedMax, 0.1, 10000),
+        estimated_hours_max: formData.estimatedMax ? validateNumber(formData.estimatedMax, 0.1, 10000) : null,
       });
 
       if (error) throw error;
@@ -114,7 +114,7 @@ const CreateTaskDialog = ({ open, onOpenChange, projectId, onTaskCreated }: Crea
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="estimated-max">Horas Máximas *</Label>
+              <Label htmlFor="estimated-max">Horas Máximas</Label>
               <Input
                 id="estimated-max"
                 type="number"
@@ -122,8 +122,7 @@ const CreateTaskDialog = ({ open, onOpenChange, projectId, onTaskCreated }: Crea
                 step="0.5"
                 value={formData.estimatedMax}
                 onChange={(e) => setFormData({ ...formData, estimatedMax: e.target.value })}
-                required
-                placeholder="20"
+                placeholder="Opcional"
               />
             </div>
           </div>

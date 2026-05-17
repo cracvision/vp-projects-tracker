@@ -1,0 +1,1 @@
+ALTER TABLE public.tasks ALTER COLUMN estimated_hours_max DROP NOT NULL;

@@ -34,7 +34,7 @@ interface Task {
   name: string;
   description: string | null;
   estimated_hours_min: number | null;
-  estimated_hours_max: number;
+  estimated_hours_max: number | null;
   actual_hours: number;
   progress: number;
   display_order: number | null;
@@ -73,9 +73,11 @@ const SortableRow = ({ task, isExpanded, onToggle, onEdit, onDelete }: SortableR
           <span className="font-medium truncate">{task.name}</span>
         </div>
         <div className="text-sm text-muted-foreground">
-          {task.estimated_hours_min
+          {task.estimated_hours_min && task.estimated_hours_max
             ? `${task.estimated_hours_min}–${task.estimated_hours_max}h`
-            : `${task.estimated_hours_max}h`}
+            : task.estimated_hours_max
+              ? `${task.estimated_hours_max}h`
+              : "—"}
         </div>
         <div className="text-sm">{task.actual_hours.toFixed(1)}h</div>
         <div className="flex items-center gap-2">
