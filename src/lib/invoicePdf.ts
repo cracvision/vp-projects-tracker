@@ -215,6 +215,16 @@ function buildServicesTable(
   params: InvoicePdfParams, 
   currency: (n: number) => string
 ): ContentTable {
+  // Inserta zero-width spaces dentro de tokens largos para que pdfmake
+  // pueda hacer wrap y no desborde la tabla fuera del margen derecho.
+  const softWrap = (text: string, maxTokenLen = 20): string => {
+    if (!text) return text;
+    return text.split(/(\s+)/).map(token => {
+      if (token.length <= maxTokenLen || /^\s+$/.test(token)) return token;
+      const chunks = token.match(new RegExp(`.{1,${maxTokenLen}}`, 'g'));
+      return chunks ? chunks.join('\u200B') : token;
+    }).join('');
+  };
   return {
     table: {
       headerRows: 1, // Headers repeat automatically on each page
@@ -231,7 +241,7 @@ function buildServicesTable(
         // Data rows with alternating colors
         ...params.items.map((item, index) => [
           { 
-            text: item.description, 
+            text: softWrap(item.description), 
             style: index % 2 === 0 ? 'tableCell' : 'tableCellAlt',
           },
           { 
