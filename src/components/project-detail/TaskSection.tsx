@@ -17,7 +17,7 @@ interface Task {
   name: string;
   description: string | null;
   estimated_hours_min: number | null;
-  estimated_hours_max: number;
+  estimated_hours_max: number | null;
   actual_hours: number;
   progress: number;
   display_order: number;
