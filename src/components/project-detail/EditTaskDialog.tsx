@@ -15,7 +15,7 @@ interface EditTaskDialogProps {
     name: string;
     description: string | null;
     estimated_hours_min: number | null;
-    estimated_hours_max: number;
+    estimated_hours_max: number | null;
   };
   onSaved: () => void;
 }
@@ -26,7 +26,7 @@ export default function EditTaskDialog({ open, onOpenChange, task, onSaved }: Ed
     name: task.name,
     description: task.description ?? "",
     estimatedMin: task.estimated_hours_min?.toString() ?? "",
-    estimatedMax: task.estimated_hours_max.toString(),
+    estimatedMax: task.estimated_hours_max?.toString() ?? "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -38,7 +38,7 @@ export default function EditTaskDialog({ open, onOpenChange, task, onSaved }: Ed
         name: form.name.trim(),
         description: form.description.trim() || null,
         estimated_hours_min: form.estimatedMin ? parseFloat(form.estimatedMin) : null,
-        estimated_hours_max: parseFloat(form.estimatedMax),
+        estimated_hours_max: form.estimatedMax ? parseFloat(form.estimatedMax) : null,
       };
       const { error } = await supabase
         .from("tasks")
@@ -89,12 +89,12 @@ export default function EditTaskDialog({ open, onOpenChange, task, onSaved }: Ed
               />
             </div>
             <div className="space-y-2">
-              <Label>Horas máximas *</Label>
+              <Label>Horas máximas</Label>
               <Input
                 type="number"
                 min="0"
                 step="0.5"
-                required
+                placeholder="Opcional"
                 value={form.estimatedMax}
                 onChange={(e) => setForm(s => ({ ...s, estimatedMax: e.target.value }))}
               />
