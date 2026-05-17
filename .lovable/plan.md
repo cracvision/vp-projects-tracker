@@ -1,44 +1,49 @@
-# Plan: Corregir truncado de la columna "Importe" en factura PDF
+# Plan: Corregir truncado real del PDF — tokens largos en Descripción
 
-## Diagnóstico
+## Diagnóstico revisado
 
-En `src/lib/invoicePdf.ts` → `buildServicesTable`, los anchos son:
+El cambio anterior de anchos (`['*', 55, 40, 65, 80]`) era correcto en teoría, pero el problema real **no son los anchos**: es que la columna **Descripción** contiene tokens largos sin espacios (nombres de archivo tipo `PDD_Proceso_Referencia_Acetaminofen_500mg.docx`, `PDD_Draft_System_Architecture_Spec_v0_1.docx`, IDs como `ACT-500-TR-001`, etc.).
 
-```ts
-widths: ['*', 60, 45, 55, 65]
-//      Desc, Fecha, Horas, Tarifa, Importe
-```
+pdfmake **no parte palabras largas automáticamente**. Cuando el token excede el ancho asignado a `*`, pdfmake expande visualmente el contenido y la tabla se desborda hacia la derecha, empujando "Importe" fuera del área imprimible y cortándolo en el borde de la página. Por eso aumentar el ancho de Importe a 80 no resolvió nada: la tabla entera se corre hacia la derecha por culpa de la descripción.
 
-Con `pageMargins: [40, 50, 40, 60]` sobre página por defecto (A4 = 595pt), el ancho útil es ~515pt. Las columnas fijas suman 225pt y cada celda tiene `paddingLeft/Right = 8` (16pt internos).
+Evidencia en la captura: el header "Importe" aparece como "Imp" y los valores como "USD 18(" — están cortados exactamente en el borde derecho de la página, no por falta de ancho de columna sino porque la tabla se extiende más allá del margen.
 
-La columna **Importe** sólo tiene 65pt de ancho total → ~49pt para contenido. Valores como `USD 12,150.00` (13 caracteres) no caben y pdfmake los corta visualmente en el borde derecho (como se ve en la captura: "USD 450.0" sin el último "0", y el header "Importe" también truncado).
+## Cambio propuesto
 
-No existe doc específica del layout de factura en el repo más allá del propio `invoicePdf.ts` e `invoice-styles.ts`; el resto son specs de negocio (numeración, due dates, etc.).
-
-## Cambio
-
-En `src/lib/invoicePdf.ts`, ajustar los anchos para dar espacio suficiente a Tarifa e Importe (que muestran montos con prefijo "USD" y separador de miles) y reducir las columnas que sí sobran:
+En `src/lib/invoicePdf.ts`, dentro de `buildServicesTable`, agregar una función helper que inserte **zero-width spaces** (`\u200B`) dentro de tokens largos (>20 caracteres) de la descripción, permitiendo que pdfmake los parta en cualquier punto sin alterar visualmente el texto.
 
 ```ts
-widths: ['*', 55, 40, 65, 80]
-//      Desc, Fecha, Horas, Tarifa, Importe
+function softWrap(text: string, maxTokenLen = 20): string {
+  return text.split(/(\s+)/).map(token => {
+    if (token.length <= maxTokenLen || /\s/.test(token)) return token;
+    // Insertar zero-width space cada N chars en tokens largos
+    return token.match(new RegExp(`.{1,${maxTokenLen}}`, 'g'))?.join('\u200B') ?? token;
+  }).join('');
+}
 ```
 
-Justificación:
-- **Importe**: 65 → **80** (cabe "USD 99,999.00" con padding).
-- **Tarifa**: 55 → **65** (cabe "USD 1,000.00" cómodo).
-- **Horas**: 45 → **40** (los valores son `0.00`–`999.99`, sobra espacio).
-- **Fecha**: 60 → **55** (formato `dd/mm/yyyy` = 10 chars, cabe).
-- **Descripción** (`*`): absorbe el resto automáticamente, pierde ~10pt pero sigue siendo la columna dominante.
+Aplicarlo al renderizar la celda de descripción:
 
-Suma fija nueva: 240pt (vs 225pt actuales) → descripción ~275pt, sigue siendo amplia para texto multi-línea (ya está configurada para no truncar).
+```ts
+{ 
+  text: softWrap(item.description), 
+  style: index % 2 === 0 ? 'tableCell' : 'tableCellAlt',
+},
+```
+
+## Anchos de columna
+
+Mantener `['*', 55, 40, 65, 80]` (suma fija 240pt, descripción ~275pt). Son correctos una vez que la descripción ya no fuerza overflow.
 
 ## Sin cambios adicionales
 
-- No se toca `invoice-styles.ts`, paddings, ni el alineamiento `right` de las columnas numéricas.
-- No se toca la sección de totales (que se ve correcta en la captura).
-- No requiere migración ni cambios de backend.
+- No se toca `invoice-styles.ts`, paddings, ni totales.
+- El zero-width space es invisible al usuario: copiar/pegar el PDF mantiene el texto legible (puede dejar un caracter invisible entre fragmentos, pero no altera el significado).
+- No cambia el backend ni los datos almacenados; solo el render.
 
 ## Verificación
 
-Generar una factura de prueba con montos grandes (>10,000) y confirmar visualmente que ni el header "Importe" ni los valores se cortan.
+Regenerar la factura #0005 (la de la captura) y confirmar:
+1. "Importe" aparece completo en el header.
+2. Los valores tipo "USD 180.00" se ven completos.
+3. Los nombres de archivo largos hacen wrap dentro de la celda de descripción.
