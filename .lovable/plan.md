@@ -1,88 +1,44 @@
-# Plan: Vista global de Entradas de Trabajo
+# Plan: Corregir truncado de la columna "Importe" en factura PDF
 
-Nueva página dedicada `/entries` para consultar todas las entradas diarias en un solo lugar, con filtros y dos modos de vista.
+## Diagnóstico
 
-## 1. Ruta y navegación
-
-- Nueva ruta `/entries` registrada en `src/App.tsx`.
-- Link "Entradas" en el header (en `Home` y `ProjectDetail`) que apunte a `/entries`. Botón de regreso al home dentro de la página.
-
-## 2. Página `src/pages/AllEntries.tsx`
-
-Estructura:
-
-```text
-┌─────────────────────────────────────────────────┐
-│ Header (logo, título, back)                     │
-├─────────────────────────────────────────────────┤
-│ Filtros (sticky card)                           │
-│  • Proyecto (Select, default "Todos")           │
-│  • Fase (Select, depende del proyecto)          │
-│  • Tipo (Todos / Regular / Excess)              │
-│  • Rango fechas (Desde / Hasta + presets:       │
-│    Hoy, Semana, Mes, Año, Todo)                 │
-│  • Búsqueda libre en notas                      │
-│  • Botón "Limpiar filtros"                      │
-├─────────────────────────────────────────────────┤
-│ Resumen de totales                              │
-│  Total horas | # entradas | desglose por        │
-│  proyecto (chips con horas)                     │
-├─────────────────────────────────────────────────┤
-│ Toggle [Lista | Tabla]                          │
-├─────────────────────────────────────────────────┤
-│ Contenido según vista                           │
-└─────────────────────────────────────────────────┘
-```
-
-### Vista Lista (`EntriesListView`)
-Reutiliza el estilo de `DailyEntriesList`: agrupada por fecha (encabezado con día + total de horas del día), cada item expandible muestra notas con `ReactMarkdown`. Acciones: editar (abre `EditEntryDialog`) y eliminar (con `AlertDialog`).
-
-### Vista Tabla (`EntriesTableView`)
-Columnas ordenables: Fecha | Proyecto | Fase | Tipo | Horas | Notas (truncadas con tooltip/expand) | Acciones. Mismas acciones inline.
-
-## 3. Data fetching
-
-Un solo query a `daily_entries` con joins:
+En `src/lib/invoicePdf.ts` → `buildServicesTable`, los anchos son:
 
 ```ts
-supabase
-  .from("daily_entries")
-  .select("*, projects!inner(id,name,owner_uid), tasks(id,name)")
-  .eq("projects.owner_uid", user.id)
-  .order("date_iso", { ascending: false })
-  .order("created_at", { ascending: false });
+widths: ['*', 60, 45, 55, 65]
+//      Desc, Fecha, Horas, Tarifa, Importe
 ```
 
-RLS ya garantiza que solo el dueño ve sus entradas. Filtros aplicados en cliente (volumen esperado bajo). Si el dataset crece, se puede mover a server-side filtering después.
+Con `pageMargins: [40, 50, 40, 60]` sobre página por defecto (A4 = 595pt), el ancho útil es ~515pt. Las columnas fijas suman 225pt y cada celda tiene `paddingLeft/Right = 8` (16pt internos).
 
-Lista de proyectos para el dropdown: `projects` del usuario (no archivados primero, archivados al final con etiqueta). Lista de fases: `tasks` del proyecto seleccionado, ordenadas por `display_order`.
+La columna **Importe** sólo tiene 65pt de ancho total → ~49pt para contenido. Valores como `USD 12,150.00` (13 caracteres) no caben y pdfmake los corta visualmente en el borde derecho (como se ve en la captura: "USD 450.0" sin el último "0", y el header "Importe" también truncado).
 
-## 4. Componentes nuevos
+No existe doc específica del layout de factura en el repo más allá del propio `invoicePdf.ts` e `invoice-styles.ts`; el resto son specs de negocio (numeración, due dates, etc.).
 
-- `src/pages/AllEntries.tsx` — página principal
-- `src/components/entries/EntriesFilters.tsx` — barra de filtros
-- `src/components/entries/EntriesSummary.tsx` — totales y chips
-- `src/components/entries/EntriesListView.tsx` — agrupada por fecha
-- `src/components/entries/EntriesTableView.tsx` — tabla compacta
-- `src/components/entries/EntryActions.tsx` — botones editar/eliminar reutilizables
+## Cambio
 
-`EditEntryDialog` actual ya recibe `projectId`, así que se pasa el del entry editado. Eliminación con la misma lógica de `DailyEntriesList`.
+En `src/lib/invoicePdf.ts`, ajustar los anchos para dar espacio suficiente a Tarifa e Importe (que muestran montos con prefijo "USD" y separador de miles) y reducir las columnas que sí sobran:
 
-## 5. Detalles técnicos
+```ts
+widths: ['*', 55, 40, 65, 80]
+//      Desc, Fecha, Horas, Tarifa, Importe
+```
 
-- Persistir filtros en query string (`?project=&from=&to=&type=&q=&view=`) para que se puedan compartir y sobrevivan refresh.
-- Usar `ymdToLocalDate` para parseo/formato de fechas (regla del proyecto).
-- `console.error` envueltos en `import.meta.env.DEV`.
-- Toggle Lista/Tabla guardado en `localStorage` (`entries:view`).
-- Vista Tabla con `overflow-auto` en móvil; en `752px` el toggle por defecto será Lista.
-- Estado vacío claro cuando no hay resultados con los filtros activos.
+Justificación:
+- **Importe**: 65 → **80** (cabe "USD 99,999.00" con padding).
+- **Tarifa**: 55 → **65** (cabe "USD 1,000.00" cómodo).
+- **Horas**: 45 → **40** (los valores son `0.00`–`999.99`, sobra espacio).
+- **Fecha**: 60 → **55** (formato `dd/mm/yyyy` = 10 chars, cabe).
+- **Descripción** (`*`): absorbe el resto automáticamente, pierde ~10pt pero sigue siendo la columna dominante.
 
-## 6. Sin cambios de backend
+Suma fija nueva: 240pt (vs 225pt actuales) → descripción ~275pt, sigue siendo amplia para texto multi-línea (ya está configurada para no truncar).
 
-No requiere migraciones ni cambios de RLS — todo se resuelve con queries existentes.
+## Sin cambios adicionales
 
-## Fuera de alcance
+- No se toca `invoice-styles.ts`, paddings, ni el alineamiento `right` de las columnas numéricas.
+- No se toca la sección de totales (que se ve correcta en la captura).
+- No requiere migración ni cambios de backend.
 
-- Exportar CSV (no lo pediste; lo podemos agregar luego si quieres).
-- Crear entradas desde esta vista (se siguen creando desde el proyecto).
-- Paginación server-side (se agrega si el volumen lo justifica).
+## Verificación
+
+Generar una factura de prueba con montos grandes (>10,000) y confirmar visualmente que ni el header "Importe" ni los valores se cortan.

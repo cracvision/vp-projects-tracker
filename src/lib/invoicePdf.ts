@@ -218,7 +218,7 @@ function buildServicesTable(
   return {
     table: {
       headerRows: 1, // Headers repeat automatically on each page
-      widths: ['*', 60, 45, 55, 65],
+      widths: ['*', 55, 40, 65, 80],
       body: [
         // Header row
         [
