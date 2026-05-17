@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ListChecks } from "lucide-react";
 import BrandLogo from "@/components/BrandLogo";
 import { useToast } from "@/hooks/use-toast";
 import ProjectSummary from "@/components/project-detail/ProjectSummary";
@@ -125,6 +125,10 @@ const ProjectDetail = () => {
                 </p>
               </div>
             </div>
+            <Button variant="outline" onClick={() => navigate("/entries")}>
+              <ListChecks className="h-4 w-4 mr-2" />
+              Entradas
+            </Button>
           </div>
         </div>
       </header>
