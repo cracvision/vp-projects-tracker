@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, LogOut } from "lucide-react";
+import { Plus, Search, LogOut, ListChecks } from "lucide-react";
 import BrandLogo from "@/components/BrandLogo";
 import { useToast } from "@/hooks/use-toast";
 import ProjectCard from "@/components/projects/ProjectCard";
@@ -99,10 +99,16 @@ const Home = () => {
                 <p className="text-sm text-muted-foreground">{user?.email}</p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Cerrar Sesión
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => navigate("/entries")}>
+                <ListChecks className="h-4 w-4 mr-2" />
+                Entradas
+              </Button>
+              <Button variant="outline" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Cerrar Sesión
+              </Button>
+            </div>
           </div>
         </div>
       </header>
