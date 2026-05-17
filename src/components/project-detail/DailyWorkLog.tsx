@@ -49,7 +49,8 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
         .from("tasks")
         .select("id, name")
         .eq("project_id", projectId)
-        .order("display_order");
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: true });
 
       if (error) throw error;
       setTasks(data || []);
@@ -123,13 +124,13 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="task">Tarea</Label>
+              <Label htmlFor="task">Fase</Label>
               <Select
                 value={formData.taskId}
                 onValueChange={(value) => setFormData({ ...formData, taskId: value })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una tarea..." />
+                  <SelectValue placeholder="Selecciona una fase..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sin asignar</SelectItem>
