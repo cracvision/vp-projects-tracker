@@ -144,11 +144,9 @@ const ProjectDetail = () => {
             {/* Facturación */}
             <div className="bg-card rounded-lg border shadow-sm p-6">
               <h2 className="text-xl font-semibold mb-4">Facturación</h2>
-              <div className="flex gap-3">
-                <Button onClick={() => navigate(`/project/${project.id}/billing`)}>
-                  Ver Facturas
-                </Button>
-              </div>
+              <Button className="w-full" onClick={() => navigate(`/project/${project.id}/billing`)}>
+                Ver Facturas
+              </Button>
             </div>
           </>
         )}
