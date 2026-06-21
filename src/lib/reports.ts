@@ -76,16 +76,19 @@ const reportStyles = {
  */
 export async function generateDailyReportPdf(opts: {
   projectName: string;
-  date: string;
+  startDate: string;
+  endDate: string;
   entries: Array<{
     id: string;
+    date_iso?: string;
     hours: number;
     notes?: string;
     created_at: string;
     tasks?: { name: string } | null;
   }>;
 }) {
-  const { projectName, date, entries } = opts;
+  const { projectName, startDate, endDate, entries } = opts;
+  const isRange = startDate !== endDate;
 
   // Load logo
   let logoDataUrl = '';
@@ -100,8 +103,8 @@ export async function generateDailyReportPdf(opts: {
   // Calculate totals
   const totalHours = entries.reduce((sum, e) => sum + (e.hours || 0), 0);
 
-  // Build entries content
-  const entriesContent: Content[] = entries.map((entry) => {
+  // Helper to render one entry block
+  const renderEntry = (entry: typeof entries[number]): Content => {
     const taskName = entry.tasks?.name || 'Sin asignar';
     const time = fmtTime(entry.created_at);
     const notes = entry.notes || 'Sin notas';
@@ -139,8 +142,38 @@ export async function generateDailyReportPdf(opts: {
             },
       ],
       margin: [0, 5, 0, 5] as [number, number, number, number],
-    } as Content;
-  });
+    };
+  };
+
+  // Build entries content: single day or grouped by day for range
+  let entriesContent: Content[];
+  if (!isRange) {
+    entriesContent = entries.map(renderEntry);
+  } else {
+    const groups = new Map<string, typeof entries>();
+    for (const e of entries) {
+      const k = e.date_iso || startDate;
+      if (!groups.has(k)) groups.set(k, [] as any);
+      groups.get(k)!.push(e);
+    }
+    const sortedKeys = Array.from(groups.keys()).sort();
+    entriesContent = sortedKeys.flatMap((k) => {
+      const dayEntries = groups.get(k)!;
+      const dayTotal = dayEntries.reduce((s, e) => s + (e.hours || 0), 0);
+      return [
+        {
+          text: `${fmt(k)} — ${dayTotal.toFixed(1)}h`,
+          style: 'sectionTitle',
+          margin: [0, 8, 0, 4] as [number, number, number, number],
+        } as Content,
+        ...dayEntries.map(renderEntry),
+      ];
+    });
+  }
+
+  const sectionTitleText = isRange
+    ? `Entradas del ${fmt(startDate)} al ${fmt(endDate)}`
+    : `Entradas del día — ${fmt(startDate)}`;
 
   // Build document
   const docDefinition: TDocumentDefinitions = {
@@ -179,7 +212,7 @@ export async function generateDailyReportPdf(opts: {
       },
       // Date and total hours
       {
-        text: `Entradas del día — ${fmt(date)}`,
+        text: sectionTitleText,
         style: 'sectionTitle',
       },
       {
@@ -208,7 +241,8 @@ export async function generateDailyReportPdf(opts: {
 
   // Generate and download
   const timestamp = format(new Date(), 'yyyy-MM-dd_HHmm');
-  createConfiguredPdf(docDefinition).download(`reporte-diario-${projectName}-${date}-${timestamp}.pdf`);
+  const fileSuffix = isRange ? `${startDate}_a_${endDate}` : startDate;
+  createConfiguredPdf(docDefinition).download(`reporte-diario-${projectName}-${fileSuffix}-${timestamp}.pdf`);
 }
 
 /**
@@ -235,9 +269,8 @@ export async function generateStatusReportPdf(opts: {
   }>;
   totalWorked: number;
   unassignedHours: number;
-  overallProgress: number;
 }) {
-  const { projectName, tasks, entries, totalWorked, unassignedHours, overallProgress } = opts;
+  const { projectName, tasks, entries, totalWorked, unassignedHours } = opts;
 
   // Load logo
   let logoDataUrl = '';
@@ -253,9 +286,7 @@ export async function generateStatusReportPdf(opts: {
   const taskTableBody: any[][] = [
     [
       { text: 'Tarea', style: 'tableHeader' },
-      { text: 'Est. (max)', style: 'tableHeader', alignment: 'right' },
-      { text: 'Horas reales', style: 'tableHeader', alignment: 'right' },
-      { text: 'Progreso', style: 'tableHeader', alignment: 'right' },
+      { text: 'Horas Trabajadas', style: 'tableHeader', alignment: 'right' },
     ],
   ];
 
@@ -264,17 +295,7 @@ export async function generateStatusReportPdf(opts: {
     taskTableBody.push([
       { text: task.name, style: isAlt ? 'tableCellAlt' : 'tableCell' },
       {
-        text: task.estimated_hours_max ? task.estimated_hours_max.toString() : '-',
-        style: isAlt ? 'tableCellAlt' : 'tableCell',
-        alignment: 'right',
-      },
-      {
         text: (task.actual_hours ?? 0).toFixed(1),
-        style: isAlt ? 'tableCellAlt' : 'tableCell',
-        alignment: 'right',
-      },
-      {
-        text: `${task.progress ?? 0}%`,
         style: isAlt ? 'tableCellAlt' : 'tableCell',
         alignment: 'right',
       },
@@ -285,9 +306,7 @@ export async function generateStatusReportPdf(opts: {
     const isAlt = tasks.length % 2 !== 0;
     taskTableBody.push([
       { text: 'Sin asignar', style: isAlt ? 'tableCellAlt' : 'tableCell' },
-      { text: '-', style: isAlt ? 'tableCellAlt' : 'tableCell', alignment: 'right' },
       { text: unassignedHours.toFixed(1), style: isAlt ? 'tableCellAlt' : 'tableCell', alignment: 'right' },
-      { text: '-', style: isAlt ? 'tableCellAlt' : 'tableCell', alignment: 'right' },
     ]);
   }
 
@@ -353,11 +372,7 @@ export async function generateStatusReportPdf(opts: {
             margin: [0, 0, 0, 5] as [number, number, number, number],
           }
         : { text: '' },
-      {
-        text: `Progreso general (sobre tareas estimadas): ${overallProgress}%`,
-        style: 'kpi',
-        margin: [0, 0, 0, 15] as [number, number, number, number],
-      },
+      { text: '', margin: [0, 0, 0, 10] as [number, number, number, number] },
       // Tasks table
       {
         text: 'Detalle por tarea',
@@ -366,7 +381,7 @@ export async function generateStatusReportPdf(opts: {
       {
         table: {
           headerRows: 1,
-          widths: ['*', 60, 70, 60],
+          widths: ['*', 100],
           body: taskTableBody,
         },
         layout: {

@@ -51,7 +51,6 @@ export function CreateInvoiceDialog({
   const [notes, setNotes] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [adjustedTotal, setAdjustedTotal] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -145,9 +144,6 @@ export function CreateInvoiceDialog({
             total_amount: 0,
             notes: notes || null,
             invoice_number: 0, // El trigger lo reemplazará
-            adjusted_total: adjustedTotal
-              ? parseFloat(adjustedTotal.replace(/[^0-9.]/g, '')) || null
-              : null,
           },
         ])
         .select("*")
@@ -209,7 +205,6 @@ export function CreateInvoiceDialog({
       setSelectedIds(new Set());
       setDueDate("");
       setNotes("");
-      setAdjustedTotal("");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -353,23 +348,9 @@ export function CreateInvoiceDialog({
                 ${rate.toFixed(2)}/h
               </span>
             </div>
-            <div className={`flex justify-between font-bold ${adjustedTotal ? "text-xs" : "text-lg"}`}>
+            <div className="flex justify-between font-bold text-lg">
               <span>Total:</span>
-              <span className={adjustedTotal ? "line-through text-muted-foreground" : ""}>
-                ${totalAmount.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-              <Label htmlFor="adjusted-total">Total Después de Ajuste:</Label>
-              <Input
-                id="adjusted-total"
-                type="text"
-                inputMode="decimal"
-                className="w-32 text-right font-bold text-xs"
-                placeholder={`$${totalAmount.toFixed(2)}`}
-                value={adjustedTotal}
-                onChange={(e) => setAdjustedTotal(e.target.value)}
-              />
+              <span>${totalAmount.toFixed(2)}</span>
             </div>
           </div>
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { FileText, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,21 +18,30 @@ interface ReportsSectionProps {
 
 const ReportsSection = ({ project }: ReportsSectionProps) => {
   const { toast } = useToast();
-  const [date, setDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const today = format(new Date(), "yyyy-MM-dd");
+  const [startDate, setStartDate] = useState<string>(today);
+  const [endDate, setEndDate] = useState<string>(today);
 
   async function generateDaily() {
     try {
+      if (startDate > endDate) {
+        toast({ title: "Rango inválido", description: "La fecha inicial debe ser anterior o igual a la final.", variant: "destructive" });
+        return;
+      }
       const { data: entries, error } = await supabase
         .from("daily_entries")
         .select("id, date_iso, hours, notes, created_at, tasks(name)")
         .eq("project_id", project.id)
-        .eq("date_iso", date)
+        .gte("date_iso", startDate)
+        .lte("date_iso", endDate)
+        .order("date_iso", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
 
       await generateDailyReportPdf({
         projectName: project.name,
-        date,
+        startDate,
+        endDate,
         entries: entries || [],
       });
 
@@ -63,24 +73,10 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         .order("date_iso", { ascending: true });
       if (eErr) throw eErr;
 
-      // 3) Totales y progreso general
-      const totalsFromTasks = (tasks || []).reduce(
-        (acc: any, t: any) => {
-          acc.actual += t.actual_hours || 0;
-          acc.estMax += t.estimated_hours_max || 0;
-          return acc;
-        },
-        { actual: 0, estMax: 0 }
-      );
-      const overall =
-        totalsFromTasks.estMax > 0
-          ? Math.min(100, Math.round((totalsFromTasks.actual / totalsFromTasks.estMax) * 100))
-          : 0;
-
-      // 4) Totales desde entradas (incluye sin asignar)
+      // 3) Totales desde entradas (incluye sin asignar)
       const totalWorked = (entries || []).reduce((s, e) => s + (e.hours || 0), 0);
 
-      // 5) Calcular horas sin asignar
+      // 4) Calcular horas sin asignar
       const unassignedHours = (entries || [])
         .filter(e => !e.task_id)
         .reduce((s, e) => s + (e.hours || 0), 0);
@@ -94,7 +90,6 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         entries: entries || [],
         totalWorked,
         unassignedHours,
-        overallProgress: overall,
       });
 
       toast({
@@ -113,22 +108,35 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
         <CardDescription>Genera reportes diarios y de estado del proyecto</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-4 items-end">
-          <div>
-            <label className="text-sm text-muted-foreground">Fecha del reporte diario</label>
-            <Input
-              type="date"
-              value={date}
-              max={format(new Date(), "yyyy-MM-dd")}
-              onChange={(e) => setDate(e.target.value)}
-            />
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end">
+            <div className="space-y-1">
+              <Label className="text-sm text-muted-foreground">Desde</Label>
+              <Input
+                type="date"
+                value={startDate}
+                max={format(new Date(), "yyyy-MM-dd")}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-sm text-muted-foreground">Hasta</Label>
+              <Input
+                type="date"
+                value={endDate}
+                max={format(new Date(), "yyyy-MM-dd")}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+            <Button variant="outline" className="h-10" onClick={generateDaily}>
+              <Calendar className="h-5 w-5 mr-2" /> Reporte Diario
+            </Button>
           </div>
-          <Button variant="outline" className="h-10" onClick={generateDaily}>
-            <Calendar className="h-5 w-5 mr-2" /> Reporte Diario
-          </Button>
-          <Button variant="outline" className="h-10" onClick={generateStatus}>
-            <FileText className="h-5 w-5 mr-2" /> Reporte de Estado
-          </Button>
+          <div className="flex justify-end">
+            <Button variant="outline" className="h-10" onClick={generateStatus}>
+              <FileText className="h-5 w-5 mr-2" /> Reporte de Estado
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
