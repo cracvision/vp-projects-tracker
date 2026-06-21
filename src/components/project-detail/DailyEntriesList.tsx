@@ -170,6 +170,7 @@ const DailyEntriesList = ({
                         variant="ghost" size="icon" title="Editar"
                         onClick={() => setEditing({ open: true, entryId: entry.id, initial: {
                           taskId: entry.task_id ?? entry.tasks?.id ?? null,
+                          taskName: entry.tasks?.name ?? null,
                           hours: entry.hours,
                           notes: entry.notes,
                           date_iso: entry.date_iso,
