@@ -185,7 +185,7 @@ export async function generateDailyReportPdf(opts: {
             ? { image: logoDataUrl, fit: [50, 20], margin: [0, 0, 10, 0] as [number, number, number, number] }
             : { text: '', width: 50 },
           {
-            text: `Reporte Diario — ${projectName}`,
+            text: `Reporte por Rango de Fechas — ${projectName}`,
             style: 'title',
             width: '*',
           },
