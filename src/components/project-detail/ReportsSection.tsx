@@ -128,13 +128,13 @@ const ReportsSection = ({ project }: ReportsSectionProps) => {
                 onChange={(e) => setEndDate(e.target.value)}
               />
             </div>
-            <Button variant="outline" className="h-10" onClick={generateDaily}>
-              <Calendar className="h-5 w-5 mr-2" /> Reporte Diario
+            <Button variant="outline" className="h-10 w-full" onClick={generateDaily}>
+              <Calendar className="h-5 w-5 mr-2" /> Reporte por Rango de Fechas
             </Button>
           </div>
           <div className="flex justify-end">
-            <Button variant="outline" className="h-10" onClick={generateStatus}>
-              <FileText className="h-5 w-5 mr-2" /> Reporte de Estado
+            <Button variant="outline" className="h-10 w-full" onClick={generateStatus}>
+              <FileText className="h-5 w-5 mr-2" /> Reporte Completo
             </Button>
           </div>
         </div>
