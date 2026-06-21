@@ -6,7 +6,6 @@ import { ArrowLeft, ListChecks } from "lucide-react";
 import BrandLogo from "@/components/BrandLogo";
 import { useToast } from "@/hooks/use-toast";
 import ProjectSummary from "@/components/project-detail/ProjectSummary";
-import TaskSection from "@/components/project-detail/TaskSection";
 import DailyWorkLog from "@/components/project-detail/DailyWorkLog";
 import ReportsSection from "@/components/project-detail/ReportsSection";
 import ExcessHoursSection from "@/components/project-detail/ExcessHoursSection";
@@ -137,7 +136,6 @@ const ProjectDetail = () => {
         {project && (
           <>
             <ProjectSummary project={project} refreshKey={refreshKey} onProjectUpdated={handleRefresh} />
-            <TaskSection projectId={project.id} onTaskUpdate={handleRefresh} />
             <DailyWorkLog
               projectId={project.id}
               onEntryAdded={handleRefresh}
