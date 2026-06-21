@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, DollarSign, TrendingUp, Calendar } from "lucide-react";
+import { Clock, DollarSign, ListChecks, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -18,10 +19,10 @@ interface ProjectSummaryProps {
 }
 
 const ProjectSummary = ({ project, refreshKey, onProjectUpdated }: ProjectSummaryProps) => {
+  const navigate = useNavigate();
   const [metrics, setMetrics] = useState({
     hoursWorked: 0,
     budgetUsed: 0,
-    progress: 0,
   });
 
   useEffect(() => {
@@ -50,24 +51,9 @@ const ProjectSummary = ({ project, refreshKey, onProjectUpdated }: ProjectSummar
       // 1) Horas totales trabajadas (incluye entradas sin tarea)
       const totalHours = entries.reduce((sum: number, e: any) => sum + (Number(e.hours) || 0), 0);
 
-      // 2) Progreso = (suma actual_hours de tareas) / (suma estimado max)
-      const totalActualByTasks = tasks.reduce(
-        (sum: number, t: any) => sum + (Number(t.actual_hours) || 0),
-        0
-      );
-      const totalEstimated = tasks.reduce(
-        (sum: number, t: any) => sum + (Number(t.estimated_hours_max) || 0),
-        0
-      );
-      const progress =
-        totalEstimated > 0
-          ? Math.min(100, Math.round((totalActualByTasks / totalEstimated) * 100))
-          : 0;
-
       setMetrics({
         hoursWorked: totalHours,
         budgetUsed: totalHours * (Number(project.hourly_rate) || 0),
-        progress,
       });
     } catch (error) {
       if (import.meta.env.DEV) {
@@ -92,9 +78,9 @@ const ProjectSummary = ({ project, refreshKey, onProjectUpdated }: ProjectSummar
       bgColor: "bg-secondary-light",
     },
     {
-      title: "Progreso General",
-      value: `${metrics.progress}%`,
-      icon: TrendingUp,
+      title: "Fases del Proyecto",
+      value: "Ver fases",
+      icon: ListChecks,
       color: "text-accent",
       bgColor: "bg-accent-light",
     },
@@ -114,9 +100,14 @@ const ProjectSummary = ({ project, refreshKey, onProjectUpdated }: ProjectSummar
       {metricCards.map((metric) => {
         const Icon = metric.icon;
         const isDueDateCard = metric.title === "Fecha de Entrega";
-        
+        const isPhasesCard = metric.title === "Fases del Proyecto";
+
         return (
-          <Card key={metric.title} className="border-0 shadow-md">
+          <Card
+            key={metric.title}
+            className={`border-0 shadow-md ${isPhasesCard ? "cursor-pointer hover:shadow-lg transition-shadow" : ""}`}
+            onClick={isPhasesCard ? () => navigate(`/project/${project.id}/phases`) : undefined}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {metric.title}
