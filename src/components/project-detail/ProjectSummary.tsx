@@ -78,8 +78,8 @@ const ProjectSummary = ({ project, refreshKey, onProjectUpdated }: ProjectSummar
       bgColor: "bg-secondary-light",
     },
     {
-      title: "Fases del Proyecto",
-      value: "Ver fases",
+      title: "Tareas del Proyecto",
+      value: "Ver tareas",
       icon: ListChecks,
       color: "text-accent",
       bgColor: "bg-accent-light",
@@ -100,7 +100,7 @@ const ProjectSummary = ({ project, refreshKey, onProjectUpdated }: ProjectSummar
       {metricCards.map((metric) => {
         const Icon = metric.icon;
         const isDueDateCard = metric.title === "Fecha de Entrega";
-        const isPhasesCard = metric.title === "Fases del Proyecto";
+        const isPhasesCard = metric.title === "Tareas del Proyecto";
 
         return (
           <Card

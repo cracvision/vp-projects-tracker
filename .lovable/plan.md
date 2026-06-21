@@ -1,38 +1,34 @@
-# Bug: "Editar entrada" muestra "Sin asignar" aunque la entrada sí tenga una Tarea
+## Cambios solicitados
 
-## Causa raíz
+Reemplazar "Fase(s)" por "Tarea(s)" en toda la UI y renombrar las tareas existentes en la base de datos.
 
-`EditEntryDialog` carga la lista de tareas del proyecto **después** de que el diálogo se abre (dentro de un `useEffect` que depende de `open`). Mientras esa petición está en curso:
+### 1. Cambios de texto en la UI
 
-- El `<Select>` tiene `value = initial.taskId` (un UUID válido), pero todavía no existe ningún `<SelectItem>` con ese valor, por lo que Radix muestra el placeholder **"Sin asignar"**.
-- El usuario percibe que la tarea quedó vacía. Si hace clic en el Select para "verificarla" y selecciona algo (incluso la misma), se dispara `taskTouched=true` y la lógica de guardado deja de preservar la tarea original.
-- Además, cualquier guardado hecho antes de que terminen de cargar las tareas se ve sospechoso al usuario aunque el `taskTouched` guard normalmente preserve el valor.
+- **`src/components/project-detail/TaskSection.tsx`**: "Fases del Proyecto" → "Tareas del Proyecto", botón "Nueva Fase" → "Nueva Tarea".
+- **`src/components/project-detail/ProjectSummary.tsx`**: tarjeta "Fases del Proyecto" → "Tareas del Proyecto", valor "Ver fases" → "Ver tareas", variable interna `isPhasesCard` ajustada al nuevo título.
+- **`src/pages/ProjectPhases.tsx`**: subtítulo del header "Fases del proyecto" → "Tareas del proyecto".
+- **`src/components/project-detail/DailyWorkLog.tsx`**: Label "Fase" → "Tarea", placeholder "Selecciona una fase..." → "Selecciona una tarea...".
+- **`src/pages/AllEntries.tsx`**: Label "Fase" → "Tarea", opción "Todas las fases" → "Todas las tareas", `TableHead` "Fase" → "Tarea", mensaje del diálogo de borrado "progreso de la fase asociada" → "progreso de la tarea asociada".
 
-El guard `taskTouched` ya existe y es correcto; el problema es puramente de **visualización inicial**: las tareas deben estar disponibles antes (o en el mismo tick) en que se abre el diálogo.
+No se renombra el archivo `ProjectPhases.tsx` ni la ruta `/project/:id/phases` para evitar romper enlaces; sólo cambia el texto visible.
 
-## Cambios
+### 2. Verificación en Reportes y Facturas
 
-**`src/components/project-detail/EditEntryDialog.tsx`**
+Revisé `src/lib/` (reports.ts, invoicePdf.ts), `src/components/billing/` y `ReportsSection.tsx` — no contienen las palabras "Phase" ni "Fase". Los PDFs muestran el nombre real de la tarea desde la BD, por lo que al renombrar las tareas (paso 3) los reportes y facturas reflejarán "Tarea N" automáticamente.
 
-1. Cambiar el `useEffect` de carga de tareas para que dependa de `projectId` únicamente (no de `open`), de modo que las tareas se carguen al montar el componente. El diálogo está siempre montado en `DailyEntriesList`, así que cuando el usuario haga clic en el lápiz, la lista ya estará disponible y el `<Select>` mostrará el nombre real de la tarea.
-2. Ajustar el `useEffect` que sincroniza `form` con `initial` para que también se ejecute cuando `open` cambia a `true` (además de cuando cambia `initial`), garantizando que cada vez que se abra el diálogo el estado se reinicialice desde cero (taskId correcto + `taskTouched=false`).
-3. Como red de seguridad: si las tareas aún no incluyen el `initial.taskId` por cualquier motivo, inyectar dinámicamente un `<SelectItem>` "fantasma" usando el nombre que ya conocemos vía prop, de modo que el Select nunca caiga al placeholder cuando hay tarea asignada.
+### 3. Renombrar tareas existentes en la base de datos
 
-**`src/components/project-detail/DailyEntriesList.tsx`**
+Hay 23 tareas con nombre `Phase N — ...`. Se ejecutará un UPDATE que reemplaza el prefijo `Phase ` por `Tarea ` conservando el número y el resto del nombre:
 
-- Pasar `taskName: entry.tasks?.name ?? null` dentro de `initial` para que EditEntryDialog pueda renderizar la opción fantasma del punto 3.
+```sql
+UPDATE public.tasks
+SET name = regexp_replace(name, '^Phase ', 'Tarea ')
+WHERE name ~ '^Phase ';
+```
 
-**`EditEntryDialog` props** — extender el tipo `initial` con `taskName?: string | null` (opcional, retrocompatible).
+Esto convertirá, por ejemplo, `Phase 1 — Assessment & Documentation` en `Tarea 1 — Assessment & Documentation`. Como `daily_entries` referencia a `tasks` por `task_id`, no hay datos adicionales que actualizar; los nombres aparecerán actualizados en toda la app, reportes y futuras facturas.
 
-## Qué NO se cambia
+### Fuera de alcance
 
-- La lógica de guardado (`onSubmit`) y el `taskTouched` guard se mantienen tal cual; ya son correctas.
-- No se toca el esquema de DB ni ningún otro componente.
-
-## Validación
-
-1. Abrir un proyecto con entradas que tengan tarea asignada.
-2. Hacer clic en el lápiz de una entrada → el Select debe mostrar el nombre real de la tarea inmediatamente (no "Sin asignar").
-3. Pulsar **Guardar** sin tocar nada → la tarea sigue asignada.
-4. Cambiar la tarea manualmente y guardar → se actualiza al nuevo valor.
-5. Seleccionar "Sin asignar" manualmente y guardar → queda sin asignar (comportamiento explícito del usuario).
+- No se modifica el nombre del archivo `ProjectPhases.tsx` ni la ruta `/phases`.
+- No se modifica el esquema de la BD ni triggers.
