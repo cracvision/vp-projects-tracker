@@ -16,7 +16,6 @@ import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ArrowLeft, Plus, Eye, Loader2 } from "lucide-react";
 import { CreateInvoiceDialog } from "@/components/billing/CreateInvoiceDialog";
-import { InvoiceDetail } from "@/components/billing/InvoiceDetail";
 
 interface Project {
   id: string;
@@ -39,9 +38,6 @@ export default function ProjectBilling() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(
-    null
-  );
 
   useEffect(() => {
     loadData();
@@ -97,10 +93,6 @@ export default function ProjectBilling() {
   };
 
   const handleCreated = () => {
-    loadInvoices();
-  };
-
-  const handleUpdate = () => {
     loadInvoices();
   };
 
@@ -208,7 +200,7 @@ export default function ProjectBilling() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setSelectedInvoiceId(invoice.id)}
+                          onClick={() => navigate(`/project/${projectId}/billing/${invoice.id}`)}
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           Ver
@@ -229,13 +221,6 @@ export default function ProjectBilling() {
         onOpenChange={setShowCreateDialog}
         project={project}
         onCreated={handleCreated}
-      />
-
-      <InvoiceDetail
-        invoiceId={selectedInvoiceId}
-        open={selectedInvoiceId !== null}
-        onOpenChange={(open) => !open && setSelectedInvoiceId(null)}
-        onUpdate={handleUpdate}
       />
     </div>
   );
