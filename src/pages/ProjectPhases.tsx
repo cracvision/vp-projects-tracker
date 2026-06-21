@@ -77,7 +77,7 @@ const ProjectPhases = () => {
               <BrandLogo className="h-8 w-auto" />
               <div>
                 <h1 className="text-xl font-bold">{project.name}</h1>
-                <p className="text-sm text-muted-foreground">Fases del proyecto</p>
+                <p className="text-sm text-muted-foreground">Tareas del proyecto</p>
               </div>
             </div>
           </div>

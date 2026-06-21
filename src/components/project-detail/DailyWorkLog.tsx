@@ -124,13 +124,13 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="task">Fase</Label>
+              <Label htmlFor="task">Tarea</Label>
               <Select
                 value={formData.taskId}
                 onValueChange={(value) => setFormData({ ...formData, taskId: value })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una fase..." />
+                  <SelectValue placeholder="Selecciona una tarea..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sin asignar</SelectItem>

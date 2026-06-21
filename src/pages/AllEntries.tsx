@@ -240,11 +240,11 @@ export default function AllEntries() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs">Fase</Label>
+                <Label className="text-xs">Tarea</Label>
                 <Select value={taskId} onValueChange={(v) => updateParam({ task: v })} disabled={projectId === "all"}>
                   <SelectTrigger><SelectValue placeholder={projectId === "all" ? "Selecciona un proyecto" : "Todas"} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todas las fases</SelectItem>
+                    <SelectItem value="all">Todas las tareas</SelectItem>
                     {tasksForProject.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -386,7 +386,7 @@ export default function AllEntries() {
                   <TableRow>
                     <TableHead>Fecha</TableHead>
                     <TableHead>Proyecto</TableHead>
-                    <TableHead>Fase</TableHead>
+                    <TableHead>Tarea</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead className="text-right">Horas</TableHead>
                     <TableHead>Notas</TableHead>
@@ -458,7 +458,7 @@ function DeleteButton({ onConfirm }: { onConfirm: () => void }) {
         <AlertDialogHeader>
           <AlertDialogTitle>¿Eliminar entrada?</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta acción no se puede deshacer y actualizará el progreso de la fase asociada.
+            Esta acción no se puede deshacer y actualizará el progreso de la tarea asociada.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

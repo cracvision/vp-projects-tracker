@@ -68,10 +68,10 @@ const TaskSection = ({ projectId, onTaskUpdate }: TaskSectionProps) => {
   return (
     <Card className="border-0 shadow-md">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Fases del Proyecto</CardTitle>
+        <CardTitle>Tareas del Proyecto</CardTitle>
         <Button onClick={() => setCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Nueva Fase
+          Nueva Tarea
         </Button>
       </CardHeader>
       <CardContent>
