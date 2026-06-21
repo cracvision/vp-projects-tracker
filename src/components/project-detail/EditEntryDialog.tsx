@@ -18,7 +18,7 @@ interface EditEntryDialogProps {
   onOpenChange: (open: boolean) => void;
   entryId: string;
   projectId: string;
-  initial: { taskId: string | null; hours: number; notes: string | null; date_iso: string };
+  initial: { taskId: string | null; hours: number; notes: string | null; date_iso: string; taskName?: string | null };
   onSaved: () => void;
 }
 
@@ -36,21 +36,22 @@ export default function EditEntryDialog({
   const [taskTouched, setTaskTouched] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!projectId) return;
     (async () => {
       const { data } = await supabase.from("tasks").select("id,name").eq("project_id", projectId).order("display_order");
       setTasks(data || []);
     })();
-  }, [open, projectId]);
+  }, [projectId]);
 
   useEffect(() => {
+    if (!open) return;
     setForm({
       taskId: initial.taskId || "none",
       hours: String(initial.hours ?? ""),
       notes: initial.notes ?? "",
     });
     setTaskTouched(false);
-  }, [initial]);
+  }, [initial, open]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -111,6 +112,9 @@ export default function EditEntryDialog({
               <SelectTrigger><SelectValue placeholder="Selecciona una tarea..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Sin asignar</SelectItem>
+                {initial.taskId && !tasks.some(t => t.id === initial.taskId) && (
+                  <SelectItem value={initial.taskId}>{initial.taskName ?? "(tarea actual)"}</SelectItem>
+                )}
                 {tasks.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
               </SelectContent>
             </Select>
