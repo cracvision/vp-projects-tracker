@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Trash2, ChevronDown, Pencil, GripVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,7 +63,7 @@ const SortableRow = ({ task, isExpanded, onToggle, onEdit, onDelete }: SortableR
   return (
     <div ref={setNodeRef} style={style} className="border rounded-lg bg-card">
       {/* Fila principal compacta */}
-      <div className="grid grid-cols-[24px,1fr,150px,140px,140px,80px] items-center gap-3 p-3">
+      <div className="grid grid-cols-[24px,1fr,150px,140px,80px] items-center gap-3 p-3">
         <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-muted-foreground">
           <GripVertical className="h-4 w-4" />
         </div>
@@ -80,10 +79,6 @@ const SortableRow = ({ task, isExpanded, onToggle, onEdit, onDelete }: SortableR
               : "—"}
         </div>
         <div className="text-sm">{task.actual_hours.toFixed(1)}h</div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm">{task.progress ?? 0}%</span>
-          <Progress value={task.progress ?? 0} className="w-16 h-2" />
-        </div>
         <div className="flex items-center gap-1 justify-end">
           <Button variant="ghost" size="icon" onClick={() => onEdit(task)} title="Editar">
             <Pencil className="h-4 w-4" />
