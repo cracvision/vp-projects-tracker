@@ -1,49 +1,29 @@
-# Plan: Corregir truncado real del PDF — tokens largos en Descripción
 
-## Diagnóstico revisado
+## Cambios solicitados
 
-El cambio anterior de anchos (`['*', 55, 40, 65, 80]`) era correcto en teoría, pero el problema real **no son los anchos**: es que la columna **Descripción** contiene tokens largos sin espacios (nombres de archivo tipo `PDD_Proceso_Referencia_Acetaminofen_500mg.docx`, `PDD_Draft_System_Architecture_Spec_v0_1.docx`, IDs como `ACT-500-TR-001`, etc.).
+### 1. Eliminar columna "% completado" en panel de Fases
+En `src/components/project-detail/TaskTable.tsx`, eliminar la columna que muestra el porcentaje (ej. "100%") y su barra de progreso azul/celeste a la derecha de las horas. Se conservan: handle de arrastre, expand, nombre, horas, editar, eliminar.
 
-pdfmake **no parte palabras largas automáticamente**. Cuando el token excede el ancho asignado a `*`, pdfmake expande visualmente el contenido y la tabla se desborda hacia la derecha, empujando "Importe" fuera del área imprimible y cortándolo en el borde de la página. Por eso aumentar el ancho de Importe a 80 no resolvió nada: la tabla entera se corre hacia la derecha por culpa de la descripción.
+### 2. Eliminar card "Progreso General" del dashboard
+En `src/components/project-detail/ProjectSummary.tsx`, quitar el card de Progreso General. El grid pasa de 4 a 3 columnas en su lugar, pero como queremos mantener 4 slots (ver punto 3), simplemente reemplazamos ese card por uno nuevo.
 
-Evidencia en la captura: el header "Importe" aparece como "Imp" y los valores como "USD 18(" — están cortados exactamente en el borde derecho de la página, no por falta de ancho de columna sino porque la tabla se extiende más allá del margen.
+### 3. Nuevo card "Fases del Proyecto" en la misma posición
+Reemplazar el card de Progreso General por un card clickeable titulado "Fases del Proyecto" (con ícono `ListChecks` o similar) que navegue a una nueva página dedicada.
 
-## Cambio propuesto
+### 4. Nueva página `/project/:projectId/phases`
+- Crear `src/pages/ProjectPhases.tsx` con header idéntico al de `ProjectDetail` (botón volver, logo, nombre del proyecto), y renderizar únicamente `<TaskSection />` (que internamente usa `TaskTable` ya sin la columna de %).
+- Registrar la ruta en `src/App.tsx`.
 
-En `src/lib/invoicePdf.ts`, dentro de `buildServicesTable`, agregar una función helper que inserte **zero-width spaces** (`\u200B`) dentro de tokens largos (>20 caracteres) de la descripción, permitiendo que pdfmake los parta en cualquier punto sin alterar visualmente el texto.
+### 5. Quitar `TaskSection` de `ProjectDetail`
+Como ahora vive en su propia página, removerlo de `src/pages/ProjectDetail.tsx`. El dashboard queda: Summary (con nuevo card) → DailyWorkLog → ExcessHoursSection → ReportsSection → Facturación. Esto coincide con la segunda captura ("Solamente quedarían estas secciones en esta página").
 
-```ts
-function softWrap(text: string, maxTokenLen = 20): string {
-  return text.split(/(\s+)/).map(token => {
-    if (token.length <= maxTokenLen || /\s/.test(token)) return token;
-    // Insertar zero-width space cada N chars en tokens largos
-    return token.match(new RegExp(`.{1,${maxTokenLen}}`, 'g'))?.join('\u200B') ?? token;
-  }).join('');
-}
-```
+## Archivos a modificar
+- `src/components/project-detail/TaskTable.tsx` — eliminar columna de progreso
+- `src/components/project-detail/ProjectSummary.tsx` — reemplazar card Progreso General por card-link a Fases
+- `src/pages/ProjectDetail.tsx` — quitar `<TaskSection />`
+- `src/pages/ProjectPhases.tsx` — nueva página
+- `src/App.tsx` — nueva ruta
 
-Aplicarlo al renderizar la celda de descripción:
-
-```ts
-{ 
-  text: softWrap(item.description), 
-  style: index % 2 === 0 ? 'tableCell' : 'tableCellAlt',
-},
-```
-
-## Anchos de columna
-
-Mantener `['*', 55, 40, 65, 80]` (suma fija 240pt, descripción ~275pt). Son correctos una vez que la descripción ya no fuerza overflow.
-
-## Sin cambios adicionales
-
-- No se toca `invoice-styles.ts`, paddings, ni totales.
-- El zero-width space es invisible al usuario: copiar/pegar el PDF mantiene el texto legible (puede dejar un caracter invisible entre fragmentos, pero no altera el significado).
-- No cambia el backend ni los datos almacenados; solo el render.
-
-## Verificación
-
-Regenerar la factura #0005 (la de la captura) y confirmar:
-1. "Importe" aparece completo en el header.
-2. Los valores tipo "USD 180.00" se ven completos.
-3. Los nombres de archivo largos hacen wrap dentro de la celda de descripción.
+## Notas
+- El cálculo de progreso del proyecto deja de mostrarse, pero la lógica en `ProjectSummary` que lo calcula se elimina junto con el card (no se usa en otro lado).
+- El campo `progress` de cada tarea sigue existiendo en BD; solo se oculta visualmente en la tabla.
