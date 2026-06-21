@@ -8,7 +8,6 @@ import { useToast } from "@/hooks/use-toast";
 import ProjectSummary from "@/components/project-detail/ProjectSummary";
 import DailyWorkLog from "@/components/project-detail/DailyWorkLog";
 import ReportsSection from "@/components/project-detail/ReportsSection";
-import ExcessHoursSection from "@/components/project-detail/ExcessHoursSection";
 
 interface Project {
   id: string;
@@ -140,7 +139,6 @@ const ProjectDetail = () => {
               projectId={project.id}
               onEntryAdded={handleRefresh}
             />
-            <ExcessHoursSection projectId={project.id} onEntryChanged={handleRefresh} />
             <ReportsSection project={project} />
             
             {/* Facturación */}
