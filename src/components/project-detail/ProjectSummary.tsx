@@ -71,7 +71,7 @@ const ProjectSummary = ({ project, refreshKey, onProjectUpdated }: ProjectSummar
       bgColor: "bg-primary-light",
     },
     {
-      title: "Presupuesto Usado",
+      title: "Costo Actual",
       value: `$${metrics.budgetUsed.toFixed(0)}`,
       icon: DollarSign,
       color: "text-secondary",
