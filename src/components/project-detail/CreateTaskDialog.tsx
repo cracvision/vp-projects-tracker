@@ -12,14 +12,15 @@ interface CreateTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  onTaskCreated: () => void;
+  onTaskCreated: (taskId?: string) => void;
+  defaultName?: string;
 }
 
-const CreateTaskDialog = ({ open, onOpenChange, projectId, onTaskCreated }: CreateTaskDialogProps) => {
+const CreateTaskDialog = ({ open, onOpenChange, projectId, onTaskCreated, defaultName }: CreateTaskDialogProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
+    name: defaultName ?? "",
     description: "",
     estimatedMin: "",
     estimatedMax: "",
@@ -35,13 +36,13 @@ const CreateTaskDialog = ({ open, onOpenChange, projectId, onTaskCreated }: Crea
         throw new Error("El nombre de la tarea es requerido");
       }
       
-      const { error } = await supabase.from("tasks").insert({
+      const { data, error } = await supabase.from("tasks").insert({
         project_id: projectId,
         name: validatedName,
         description: formData.description ? sanitizeText(formData.description, 1000) : null,
         estimated_hours_min: formData.estimatedMin ? validateNumber(formData.estimatedMin, 0.1, 10000) : null,
         estimated_hours_max: formData.estimatedMax ? validateNumber(formData.estimatedMax, 0.1, 10000) : null,
-      });
+      }).select("id").single();
 
       if (error) throw error;
 
@@ -52,7 +53,7 @@ const CreateTaskDialog = ({ open, onOpenChange, projectId, onTaskCreated }: Crea
 
       setFormData({ name: "", description: "", estimatedMin: "", estimatedMax: "" });
       onOpenChange(false);
-      onTaskCreated();
+      onTaskCreated(data?.id);
     } catch (error: any) {
       if (import.meta.env.DEV) {
         console.error("Create task error:", error);
