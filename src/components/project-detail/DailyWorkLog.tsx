@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import DailyEntriesList from "./DailyEntriesList";
+import CreateTaskDialog from "./CreateTaskDialog";
 import { sanitizeText, validateNumber } from "@/lib/validation";
 
 interface DailyWorkLogProps {
@@ -38,6 +39,14 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
   });
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+
+  const handleTaskCreated = async (taskId?: string) => {
+    await fetchTasks();
+    if (taskId) {
+      setFormData((prev) => ({ ...prev, taskId }));
+    }
+  };
 
   useEffect(() => {
     fetchTasks();
@@ -127,7 +136,13 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
               <Label htmlFor="task">Tarea</Label>
               <Select
                 value={formData.taskId}
-                onValueChange={(value) => setFormData({ ...formData, taskId: value })}
+                onValueChange={(value) => {
+                  if (value === "__new__") {
+                    setCreateTaskOpen(true);
+                    return;
+                  }
+                  setFormData({ ...formData, taskId: value });
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona una tarea..." />
@@ -139,6 +154,7 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
                       {task.name}
                     </SelectItem>
                   ))}
+                  <SelectItem value="__new__">+ Crear nueva tarea…</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -181,6 +197,14 @@ const DailyWorkLog = ({ projectId, onEntryAdded }: DailyWorkLogProps) => {
         onDateChange={setSelectedDate}
         refreshKey={refreshKey}
         onEntryDeleted={onEntryAdded}
+      />
+
+      <CreateTaskDialog
+        key={createTaskOpen ? "open" : "closed"}
+        open={createTaskOpen}
+        onOpenChange={setCreateTaskOpen}
+        projectId={projectId}
+        onTaskCreated={handleTaskCreated}
       />
     </div>
   );
