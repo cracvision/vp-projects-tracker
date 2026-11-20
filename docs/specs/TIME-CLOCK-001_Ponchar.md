@@ -1,10 +1,15 @@
 # TIME-CLOCK-001 — Página "Ponchar" (reloj de horas trabajadas)
 
+> **⚠ REEMPLAZADA (2026-11-20) por [HOURS-001](HOURS-001_Horas.md).** Carlos aclaró que lo que necesita es más
+> sencillo: entrar fecha + cantidad de horas por proyecto y ver el listado con el total, sin reloj ni pausas.
+> No se implementó la interfaz de Ponchar. La migración `20261120172152_time_clock.sql` llegó a aplicarse en
+> producción; la migración de HOURS-001 elimina esos objetos. Este documento se conserva solo como historial.
+
 | Campo | Valor |
 |---|---|
 | App | VP Projects Tracker |
 | Solicitado por | Carlos Acevedo, 2026-11-20 |
-| Estado | Especificación v0.2 — decisiones de la §3 **aprobadas por Carlos (2026-11-20)**, con los ajustes de la §3.1 |
+| Estado | **Reemplazada por HOURS-001.** (Antes: v0.2, decisiones de la §3 aprobadas por Carlos el 2026-11-20) |
 | Ejecuta | Claude Code (rama `feat/time-clock`) |
 
 ## 1. Solicitud (textual)
