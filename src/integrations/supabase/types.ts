@@ -381,12 +381,103 @@ export type Database = {
           },
         ]
       }
+      time_session_breaks: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          session_id: string
+          started_at: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          session_id: string
+          started_at: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          session_id?: string
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_session_breaks_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "time_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          notes: string | null
+          owner_uid: string
+          project_id: string
+          started_at: string
+          updated_at: string
+          work_date: string | null
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          owner_uid?: string
+          project_id: string
+          started_at: string
+          updated_at?: string
+          work_date?: never
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          owner_uid?: string
+          project_id?: string
+          started_at?: string
+          updated_at?: string
+          work_date?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_sessions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      clock_out: {
+        Args: { p_at: string; p_session_id: string }
+        Returns: undefined
+      }
       next_invoice_number: { Args: { p_owner: string }; Returns: number }
+      save_time_session: {
+        Args: {
+          p_breaks?: Json
+          p_ended_at: string
+          p_notes: string
+          p_project_id: string
+          p_session_id: string
+          p_started_at: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
