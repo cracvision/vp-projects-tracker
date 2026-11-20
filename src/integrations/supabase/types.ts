@@ -75,6 +75,47 @@ export type Database = {
           },
         ]
       }
+      hour_entries: {
+        Row: {
+          created_at: string
+          hours: number
+          id: string
+          notes: string | null
+          owner_uid: string
+          project_id: string
+          updated_at: string
+          work_date: string
+        }
+        Insert: {
+          created_at?: string
+          hours: number
+          id?: string
+          notes?: string | null
+          owner_uid?: string
+          project_id: string
+          updated_at?: string
+          work_date: string
+        }
+        Update: {
+          created_at?: string
+          hours?: number
+          id?: string
+          notes?: string | null
+          owner_uid?: string
+          project_id?: string
+          updated_at?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hour_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_counters: {
         Row: {
           last_number: number
