@@ -59,11 +59,12 @@ Una tabla nueva. **Ninguna tabla existente cambia.**
 | `project_id` | `uuid NOT NULL` | FK `projects(id) ON DELETE CASCADE` |
 | `work_date` | `date NOT NULL` | Fecha de calendario del trabajo |
 | `hours` | `numeric(4,2) NOT NULL` | `CHECK (hours > 0 AND hours <= 24)` |
-| `notes` | `text` | Opcional |
+| `notes` | `text` | Opcional, máximo 2000 caracteres (CHECK) |
 | `created_at` | `timestamptz NOT NULL` | `DEFAULT now()` |
 | `updated_at` | `timestamptz NOT NULL` | `DEFAULT now()`, trigger `update_updated_at_column()` |
 
-- Índice: `(owner_uid, project_id, work_date DESC)`.
+- Índice: `(project_id, work_date DESC)` (sirve al listado y al borrado en cascada del proyecto).
+- Migración: `supabase/migrations/20261120204332_hour_entries.sql`.
 - **RLS** habilitado, patrón de `invoices`: `SELECT` y `DELETE` si `owner_uid = auth.uid()`; `INSERT` y `UPDATE`
   además exigen que `project_id` sea un proyecto del usuario.
 - La regla de fecha futura (H-3) se valida en el cliente; la base garantiza el rango de horas (CHECK) y la
