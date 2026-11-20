@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import ProjectSummary from "@/components/project-detail/ProjectSummary";
 import DailyWorkLog from "@/components/project-detail/DailyWorkLog";
 import ReportsSection from "@/components/project-detail/ReportsSection";
+import HoursCard from "@/components/project-detail/HoursCard";
 
 interface Project {
   id: string;
@@ -54,7 +55,7 @@ const ProjectDetail = () => {
       }
 
       setProject(data);
-    } catch (err: any) {
+    } catch (err) {
       if (import.meta.env.DEV) {
         console.error("Error al cargar el proyecto:", err);
       }
@@ -140,7 +141,10 @@ const ProjectDetail = () => {
               onEntryAdded={handleRefresh}
             />
             <ReportsSection project={project} />
-            
+
+            {/* Horas (HOURS-001) */}
+            <HoursCard projectId={project.id} projectName={project.name} />
+
             {/* Facturación */}
             <div className="bg-card rounded-lg border shadow-sm p-6">
               <h2 className="text-xl font-semibold mb-4">Facturación</h2>
