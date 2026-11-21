@@ -12,6 +12,7 @@ export interface HourEntry {
   work_date: string;
   hours: number;
   notes: string | null;
+  changelog_refs: string[];
   created_at: string;
 }
 
@@ -25,12 +26,12 @@ export function useHourEntries(projectId: string | undefined, enabled = true) {
     queryFn: async (): Promise<HourEntry[]> => {
       const { data, error } = await supabase
         .from("hour_entries")
-        .select("id, project_id, work_date, hours, notes, created_at")
+        .select("id, project_id, work_date, hours, notes, changelog_refs, created_at")
         .eq("project_id", projectId)
         .order("work_date", { ascending: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []).map((r) => ({ ...r, hours: Number(r.hours) }));
+      return (data ?? []).map((r) => ({ ...r, hours: Number(r.hours), changelog_refs: r.changelog_refs ?? [] }));
     },
   });
 }

@@ -62,7 +62,7 @@ describe("validateHourEntry", () => {
   const today = "2026-11-20";
   it("devuelve los valores listos para la base; nota vacía → null", () => {
     expect(validateHourEntry({ workDate: "2026-11-19", hours: "7,5", notes: "   " }, today)).toEqual({
-      ok: true, value: { work_date: "2026-11-19", hours: 7.5, notes: null },
+      ok: true, value: { work_date: "2026-11-19", hours: 7.5, notes: null, changelog_refs: [] },
     });
   });
   it("limpia HTML de la nota y la recorta a 2000 caracteres", () => {
@@ -121,5 +121,18 @@ describe("hoursErrorMessage", () => {
     expect(hoursErrorMessage({ message: "NOT_FOUND" })).toBe("La entrada ya no existe. Recarga la página.");
     expect(hoursErrorMessage({ message: "Failed to fetch" })).toBe("No se pudo completar la operación. Intenta de nuevo.");
     expect(hoursErrorMessage(null)).toBe("No se pudo completar la operación. Intenta de nuevo.");
+  });
+});
+
+describe("parseChangelogRefs", () => {
+  it("trims, drops empty lines and duplicates", async () => {
+    const { parseChangelogRefs } = await import("./hours");
+    expect(parseChangelogRefs("  a.md \n\n b.md\na.md\n")).toEqual({ ok: true, value: ["a.md", "b.md"] });
+    expect(parseChangelogRefs("")).toEqual({ ok: true, value: [] });
+  });
+  it("rejects more than 10 names or names over 255 chars", async () => {
+    const { parseChangelogRefs } = await import("./hours");
+    expect(parseChangelogRefs(Array.from({ length: 11 }, (_, i) => `f${i}`).join("\n")).ok).toBe(false);
+    expect(parseChangelogRefs("x".repeat(256)).ok).toBe(false);
   });
 });

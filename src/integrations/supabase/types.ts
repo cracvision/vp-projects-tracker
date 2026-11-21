@@ -77,6 +77,7 @@ export type Database = {
       }
       hour_entries: {
         Row: {
+          changelog_refs: string[]
           created_at: string
           hours: number
           id: string
@@ -87,6 +88,7 @@ export type Database = {
           work_date: string
         }
         Insert: {
+          changelog_refs?: string[]
           created_at?: string
           hours: number
           id?: string
@@ -97,6 +99,7 @@ export type Database = {
           work_date: string
         }
         Update: {
+          changelog_refs?: string[]
           created_at?: string
           hours?: number
           id?: string
@@ -428,6 +431,7 @@ export type Database = {
     }
     Functions: {
       next_invoice_number: { Args: { p_owner: string }; Returns: number }
+      valid_changelog_refs: { Args: { refs: string[] }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

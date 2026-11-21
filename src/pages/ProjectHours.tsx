@@ -123,6 +123,7 @@ export default function ProjectHours() {
                         <TableHead>Fecha</TableHead>
                         <TableHead>Día</TableHead>
                         <TableHead className="text-right">Horas</TableHead>
+                        <TableHead className="hidden md:table-cell">Changelog(s)</TableHead>
                         <TableHead className="hidden sm:table-cell">Nota</TableHead>
                         <TableHead className="w-[96px]"><span className="sr-only">Acciones</span></TableHead>
                       </TableRow>
@@ -140,6 +141,15 @@ export default function ProjectHours() {
                           </TableCell>
                           <TableCell className="text-sm capitalize align-top">{formatWeekday(e.work_date)}</TableCell>
                           <TableCell className="text-right font-medium tabular-nums align-top">{formatHours(e.hours)}</TableCell>
+                          <TableCell className="hidden md:table-cell align-top">
+                            {e.changelog_refs.length ? (
+                              <ul className="text-sm font-mono space-y-0.5">
+                                {e.changelog_refs.map((r) => <li key={r} className="break-all">{r}</li>)}
+                              </ul>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
                           <TableCell className="hidden sm:table-cell max-w-md align-top">
                             <span className="text-sm text-muted-foreground whitespace-pre-wrap">{e.notes || "—"}</span>
                           </TableCell>
@@ -188,6 +198,7 @@ export default function ProjectHours() {
                       <TableRow>
                         <TableCell colSpan={2} className="font-semibold">Total</TableCell>
                         <TableCell className="text-right font-bold tabular-nums">{formatHours(total)}</TableCell>
+                        <TableCell className="hidden md:table-cell" />
                         <TableCell className="hidden sm:table-cell" />
                         <TableCell />
                       </TableRow>

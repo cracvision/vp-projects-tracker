@@ -53,17 +53,40 @@ export function validateWorkDate(ymd: string, today: string): Result<string> {
   return { ok: true, value: ymd };
 }
 
+/** Máximo de changelogs por entrada y largo de cada nombre (lo garantiza también el CHECK de la base). */
+export const CHANGELOG_MAX_ITEMS = 10;
+export const CHANGELOG_MAX_LEN = 255;
+
+/** Una línea por archivo: recorta, quita vacías y duplicados (conserva el orden). */
+export function parseChangelogRefs(input: string): Result<string[]> {
+  const seen = new Set<string>();
+  const refs: string[] = [];
+  for (const line of input.split(/\r?\n/)) {
+    const t = line.trim();
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    refs.push(t);
+  }
+  if (refs.length > CHANGELOG_MAX_ITEMS) return { ok: false, error: `Máximo ${CHANGELOG_MAX_ITEMS} changelogs por entrada` };
+  if (refs.some((r) => r.length > CHANGELOG_MAX_LEN)) {
+    return { ok: false, error: `Cada nombre puede tener como máximo ${CHANGELOG_MAX_LEN} caracteres` };
+  }
+  return { ok: true, value: refs };
+}
+
 export interface HourEntryForm {
   workDate: string;
   hours: string;
   notes: string;
+  changelogs?: string;
 }
 export interface HourEntryValues {
   work_date: string;
   hours: number;
   notes: string | null;
+  changelog_refs: string[];
 }
-export type HourEntryErrors = Partial<Record<"workDate" | "hours", string>>;
+export type HourEntryErrors = Partial<Record<"workDate" | "hours" | "changelogs", string>>;
 
 /** Valida el formulario completo y devuelve los valores listos para la base, o los errores por campo. */
 export function validateHourEntry(
@@ -72,17 +95,22 @@ export function validateHourEntry(
 ): { ok: true; value: HourEntryValues } | { ok: false; errors: HourEntryErrors } {
   const date = validateWorkDate(form.workDate, today);
   const hours = parseHours(form.hours);
-  if (date.ok === false || hours.ok === false) {
+  const refs = parseChangelogRefs(form.changelogs ?? "");
+  if (date.ok === false || hours.ok === false || refs.ok === false) {
     return {
       ok: false,
       errors: {
         ...(date.ok === false ? { workDate: date.error } : {}),
         ...(hours.ok === false ? { hours: hours.error } : {}),
+        ...(refs.ok === false ? { changelogs: refs.error } : {}),
       },
     };
   }
   const notes = sanitizeText(form.notes, NOTES_MAX);
-  return { ok: true, value: { work_date: date.value, hours: hours.value, notes: notes || null } };
+  return {
+    ok: true,
+    value: { work_date: date.value, hours: hours.value, notes: notes || null, changelog_refs: refs.value },
+  };
 }
 
 /** Suma exacta (en centésimas, sin errores de coma flotante: 0.1 + 0.2 = 0.3). */
@@ -116,6 +144,12 @@ export function hoursErrorMessage(error: { code?: string; message?: string } | n
     return `Las horas deben ser más de 0 y como máximo ${MAX_HOURS}.`;
   }
   if (msg.includes("hour_entries_notes_length")) return `La nota no puede pasar de ${NOTES_MAX} caracteres.`;
+  if (msg.includes("hour_entries_changelog_refs_valid")) {
+    return `Changelog(s): máximo ${CHANGELOG_MAX_ITEMS} nombres de hasta ${CHANGELOG_MAX_LEN} caracteres.`;
+  }
+  if (error?.code === "23505" || msg.includes("hour_entries_owner_project_date_key")) {
+    return "Ya existe una entrada para esta fecha en este proyecto.";
+  }
   if (error?.code === "42501" || msg.includes("row-level security")) return "No tienes permiso para esta operación.";
   if (msg === "NOT_FOUND") return "La entrada ya no existe. Recarga la página.";
   return "No se pudo completar la operación. Intenta de nuevo.";
